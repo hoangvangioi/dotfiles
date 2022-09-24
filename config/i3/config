@@ -236,6 +236,10 @@ client.focused_inactive #343746 #343746 #F8F8F2 #21222C #21222C
 client.unfocused #343746 #343746 #F8F8F2 #21222C #21222C
 
 ### SETTINGS FOR i3 BAR ###
+for_window [class="^.*"] border pixel 0
+for_window [title="^.*"] floating disabled
+font pango:DejaVu Sans Mono 0
+for_window [class=".*"] title_format ""
 
 bar {
         mode invisible
