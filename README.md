@@ -128,7 +128,7 @@ chmod +x install-on-arch.sh
 
 8. Install sddm flower theme.
     ```sh
-    sudo git clone https://github.com/keyitdev/sddm-flower-theme.git /usr/share/sddm/themes/sddm-flower-theme
+    sudo cp -r ~/dotfiles/sddm-flower-theme /usr/share/sddm/themes/sddm-flower-theme
     sudo cp /usr/share/sddm/themes/sddm-flower-theme/Fonts/* /usr/share/fonts/
     echo "[Theme]
     Current=sddm-flower-theme" | sudo tee /etc/sddm.conf

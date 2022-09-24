@@ -106,7 +106,8 @@ install_sddm(){
     echo -e "${green}[*] Installing sddm theme.${no_color}"
     "$aurhelper" -S --noconfirm --needed qt5-graphicaleffects qt5-quickcontrols2 qt5-svg sddm
     sudo systemctl enable sddm.service
-    sudo git clone https://github.com/keyitdev/sddm-flower-theme.git /usr/share/sddm/themes/sddm-flower-theme
+    sudo cp -r ~/dotfiles/sddm-flower-theme /usr/share/sddm/themes/sddm-flower-theme
+    # sudo git clone https://github.com/keyitdev/sddm-flower-theme.git /usr/share/sddm/themes/sddm-flower-theme
     sudo cp /usr/share/sddm/themes/sddm-flower-theme/Fonts/* /usr/share/fonts/
     echo "[Theme]
     Current=sddm-flower-theme" | sudo tee /etc/sddm.conf
