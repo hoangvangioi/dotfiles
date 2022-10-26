@@ -1,0 +1,65 @@
+H
+a
+1000
+:es
+Helo
+HELLO
+HEllo
+:!
+er
+rofitr
+styles
+Hello
+Search
+inherit
+Translate
+selected
+cher
+translation
+language
+speak the source
+*
+!s*
+!s
+object storage
+High Availability
+motherboard
+superblade
+blade
+Blade
+Thank you for installing my Ecovim config! Please support me by giving a star :)
+Thank you for installing my Ecovim config! Please support me by giving a star :)Do not forget to use a font with glyphs (icons) support [https://github.com/ryanoasis/nerd-fonts].I recommend Fira Code for Ecovim setup.
+remove filetype.nvim since it's not needed in 0.8 anymore
+hello
+simple
+script
+emdedeb
+Nhungs
+splitting the argument list: Invalid argument
+Error splitting the argument list: Invalid argument
+option(s) found in the command: may be ignored.
+Trailing option(s) found in the command: may be ignored. 
+Embedded System
+# assemble the program
+nasm -f elf64 hello.asm # assemble the programld -s -o hello hello.o # link the object file nasm produced into an executable file./hello # hello is an executable file
+Markdown support for the browsable API
+complete
+Task
+request
+valid
+called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to 127.0.0.1:8000/api/task-update/3/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+-s
+You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to 127.0.0.1:8000/api/task-update/3/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+Retrieve API View
+# Wait until the processes have been shut down
+# Terminate already running bar instances
+got an unexpected keyword argument 'pk'
+GenericAPIView.get_object() takes 1 positional argument but 2 were given
+HTTP status code must be an integer.
+Internal Server Error)
+constraint failed: api_task.id
+UNIQUE constraint failed: api_task.id
+PutAsCreateMixin.get_object_or_none() got an unexpected keyword argument 'id'
+perform
+The cable cannot be connected to that port.
+deep

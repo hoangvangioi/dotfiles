@@ -2,14 +2,6 @@
 
 The **Arch Linux** & **i3wm** dotfiles! 
 
-[Showcase](#showcase) ·
-[Information](#information) ·
-[Installation](#installation) ·
-[Cheat sheet](#cheat-sheet) ·
-**i3wm** is very simple, old tiling window manager, but it is still powerful and highly configurable. Although it takes time and effort to configure it, but I'm very satisfied with the result.
-
-![](https://github.com/Keyitdev/screenshots/blob/master/dotfiles/v3/screenshots/1.png?raw=true)
-
 ## Information
 
 - **OS:** [Arch Linux](https://archlinux.org)
@@ -58,16 +50,6 @@ Detailed information and dependencies
 **Emoji:** fonts: noto-fonts noto-fonts-cjk noto-fonts-emoji noto-fonts-extra
 
 </details>
-
-## Showcase
-
-|neofetch & cava|
-|-|-|
-|![](https://github.com/Keyitdev/screenshots/blob/master/dotfiles/v3/screenshots/1.png?raw=true)|![](https://github.com/Keyitdev/screenshots/blob/master/dotfiles/v3/screenshots/2.png?raw=true)|
-|rofi & dunst|nemo & nvim & ranger|
-|![](https://github.com/Keyitdev/screenshots/blob/master/dotfiles/v3/screenshots/3.png?raw=true)|![](https://github.com/Keyitdev/screenshots/blob/master/dotfiles/v3/screenshots/4.png?raw=true)|
-|i3lock-color|sddm|
-|![](https://github.com/Keyitdev/screenshots/blob/master/dotfiles/v3/screenshots/5.png?raw=true)|![](https://github.com/Keyitdev/screenshots/blob/master/dotfiles/v3/screenshots/6.png?raw=true)|
 
 ## Installation
 

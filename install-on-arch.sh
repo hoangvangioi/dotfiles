@@ -171,3 +171,6 @@ do
         15) finishing;;
     esac
 done
+
+
+# sudo systemctl enable bluetooth

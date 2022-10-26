@@ -1,0 +1,133 @@
+@import "colors.rasi"
+
+configuration {
+	show-icons:		true;
+	sidebar-mode: 	false;
+	hover-select: true;
+	me-select-entry: "";
+	me-accept-entry: [MousePrimary];
+}
+*{
+	font: "DejaVu Sans Mono 13";			//Font
+	//Colors
+	accent:#00BCD4; 					//Highlight
+	fg-selection:@fg; 	//Selection_fg
+	background-selection:#e34039; 		//Selection_bg
+
+	transparent:					#ffffff00;
+	background-color:				@transparent;
+	text-color:						@fg;
+	selected-normal-fg:		@fg-selection;
+	normal-fg:       		@fg;
+	alternate-normal-background:	@transparent;
+	selected-urgent-fg:  	@fg;
+	urgent-fg:           	@fg;
+	alternate-urgent-background: 	@bg;
+	active-fg:           	@accent;
+	selected-active-fg:  	@background-selection;
+	alternate-normal-fg: 	@fg;
+	alternate-active-background: 	@bg;
+	bordercolor:                 	@bg;
+	normal-background:           	@transparent;
+	selected-normal-background:  	@background-selection;
+	separatorcolor:              	@accent;
+	urgent-background:           	@accent;
+	alternate-urgent-fg: 	@fg;
+	selected-urgent-background:  	@accent;
+	alternate-active-fg: 	@fg;
+	selected-active-background:  	@transparent;
+	active-background:           	@transparent;
+}
+window {
+	padding: 					10;
+    transparency:               "real";
+    background-color:           @bg;
+    text-color:                 @fg;
+	border:						2px;
+	border-color:				@ac;
+    border-radius:            	0px;
+    location:                   center;
+    x-offset:                   0;
+    y-offset:                   0;
+}
+mainbox {
+	border:		0;
+	padding: 	0;
+}
+textbox {
+	text-color: @fg;
+}
+listview {
+	spacing:      	4px;
+	lines:			0;
+	fixed-height: 	0;
+	border: 		0;
+	scrollbar: 		false;
+	text-color:		@separatorcolor;
+}
+element {
+	border:			0;
+	padding:		0;
+	border-radius:	4px;
+}
+element-text {
+	background-color: inherit;
+	text-color:       inherit;
+}
+element.normal.normal {
+	text-color:			@normal-fg;
+	background-color:	@normal-background;
+}
+element.normal.urgent {
+	text-color:			@urgent-fg;
+	background-color:	@urgent-background;
+}
+element.normal.active {
+	text-color:			@active-fg;
+	background-color:	@active-background;
+}
+element.selected.normal {
+	text-color:			@selected-normal-fg;
+	background-color:	@selected-normal-background;
+}
+element.selected.urgent {
+	text-color:			@selected-urgent-fg;
+	background-color:	@selected-urgent-background;
+}
+element.selected.active {
+	text-color:			@selected-active-fg;
+	background-color:	@selected-active-background;
+}
+element.alternate.normal {
+	text-color:			@alternate-normal-fg;
+	background-color:	@alternate-normal-background;
+}
+element.alternate.urgent {
+	text-color:			@alternate-urgent-fg;
+	background-color:	@alternate-urgent-background;
+}
+element.alternate.active {
+	text-color:			@alternate-active-fg;
+	background-color:	@alternate-active-background;
+}
+mode-switcher {
+	border:	0;
+}
+button selected {
+	text-color:			@selected-normal-fg;
+	background-color:	@selected-normal-background;
+}
+button normal {
+	text-color:	@fg;
+}
+inputbar {
+	children: [textbox-prompt-colon,entry];
+}
+textbox-prompt-colon{
+	expand:	false;
+	margin: 0;
+	str:	":";
+}
+entry {
+	placeholder:	"";
+}

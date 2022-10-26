@@ -1,6 +1,4 @@
 # Documentation: https://dunst-project.org/documentation/
-# Config created by Keyitdev https://www.github.com/keyitdev/dotfiles
-# Copyright (C) 2022 Keyitdev
 
 [global]
     monitor = 0
@@ -71,4 +69,4 @@
     background = "#1b1b25"
     foreground = "#dedede"
     frame_color = "#f07178"
-    timeout = 0  
+    timeout = 0

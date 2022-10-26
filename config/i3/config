@@ -14,14 +14,14 @@ font pango:Open sans 11
 exec_always --no-startup-id dunst &
 
 # set wallpaper with fed
-exec_always feh --no-fehbg --bg-scale $HOME/Pictures/wallpapers/background.jpg
+exec_always feh --no-fehbg --bg-scale $HOME/Pictures/wallpapers/61953.jpg
 
 # launch polybar
 exec_always --no-startup-id killall -q
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 
 # run battery low warning
-exec_always --no-startup-id battery&
+exec_always --no-startup-id battery &
 
 # Enable touchpad Tapping
 exec_always --no-startup-id xinput set-prop "ELAN1200:00 04F3:3087 Touchpad" "libinput Tapping Enabled" 1
