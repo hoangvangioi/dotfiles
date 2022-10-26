@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Media player menu with rofi
+
+if [ -z "${ROFI_OUTSIDE}" ]; then
+    # controler = ''
+    # echo `playerctl --list-all`
+    export mediaplayer=`playerctl --list-all`
+    export Mediaplayer=$(echo $1 | sed -E 's/(.)/\U\1/')
+    exec rofi -no-lazy-grab -show-icons -no-custom -modi m:$0 -show m \
+              -kb-custom-1 Super+z \
+              -kb-custom-2 Super+x \
+              -kb-custom-3 Super+c \
+              -kb-custom-4 Super+v \
+              -kb-custom-5 Super+b \
+              -kb-custom-6 Super+m \
+              -kb-custom-7 Super+s \
+              -kb-cancel Escape,Control+g,Super+Escape
+fi
+
+if [ $ROFI_RETV -ge 10 ] && [ $ROFI_RETV -le 28 ]; then
+    ROFI_INFO=$((ROFI_RETV-9))
+    ROFI_RETV=1
+fi
+
+case $ROFI_RETV in
+    0)
+        # Prompt
+        printf "\00prompt\037media player\n"
+        printf "\00message\037$...\n"
+        printf "\00use-hot-keys\037true\n"
+
+        # Available actions
+        i=0
+        while read icon description
+        do
+          i=$((i+1))
+          printf "$description\00icon\037$icon\037info\037$i\n"
+        done <<EOF
+go-previous               Previous track
+media-playback-start      Play
+media-playback-pause      Pause
+media-playback-stop       Stop
+go-next                   Next track
+multimedia-volume-control Open mixer panel
+com.spotify.Client        Open ${Mediaplayer}
+EOF
+
+        # Player status
+        status=$(playerctl -p $mediaplayer status)
+        case $status in
+            Playing|Paused)
+                title="$(playerctl -p $mediaplayer metadata xesam:title | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g')"
+                artist="$(playerctl -p $mediaplayer metadata xesam:artist | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g')"
+                status="$status <span weight='light'><i>${title} (${artist})</i></span>"
+                ;;
+        esac
+        printf "\00message\037${status}\n"
+        ;;
+    1)
+        case $ROFI_INFO in
+            1) playerctl -p $mediaplayer previous ;;
+            2) playerctl -p $mediaplayer play ;;
+            3) playerctl -p $mediaplayer pause ;;
+            4) playerctl -p $mediaplayer stop ;;
+            5) playerctl -p $mediaplayer next ;;
+            6) i3-msg '[class="Pavucontrol"] focus' || i3-msg exec exec pavucontrol ;;
+            7) i3-msg '[class="'${Mediaplayer}'"] focus' || i3-msg exec exec ${mediaplayer} ;;
+        esac >&2
+        ;;
+esac
