@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Config created by Keyitdev https://www.github.com/keyitdev/dotfiles
-# Copyright (C) 2022 Keyitdev
-
 config_directory="$HOME/.config"
 fonts_directory="/usr/share/fonts"
 scripts_directory="/usr/local/bin"
