@@ -54,10 +54,10 @@ Welcome to the ultimate Arch Linux setup with i3-wm. This repository contains co
 
 ## Installation
 
-    ```sh
-    curl -LsS https://arch.hoangvangioi.com | bash
-    ```
-    > **Note:** This method requires `curl`. Install it with `sudo pacman -S curl`.
+```sh
+curl -LsS https://arch.hoangvangioi.com | bash
+```
+> **Note:** This method requires `curl`. Install it with `sudo pacman -S curl`.
 
 ---
 
