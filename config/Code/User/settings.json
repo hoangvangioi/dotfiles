@@ -1,0 +1,15 @@
+{
+    "editor.fontFamily": "'JetBrainsMono Nerd Font', 'monospace', monospace",
+    "editor.fontSize": 15,
+    "workbench.colorTheme": "Dracula Theme",
+    "window.menuBarVisibility": "hidden",
+    "workbench.iconTheme": "material-icon-theme",
+    "vscodeGoogleTranslate.preferredLanguage": "Vietnamese",
+    "terminal.integrated.tabs.enabled": true,
+    "material-icon-theme.folders.color": "#1ab3af",
+    "material-icon-theme.files.color": "#bf40f0",
+    "material-icon-theme.folders.theme": "specific",
+    "material-icon-theme.opacity": 1,
+    "material-icon-theme.saturation": 1,
+    "workbench.activityBar.location": "hidden"
+}

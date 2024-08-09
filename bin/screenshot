@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# Ensure the screenshots directory exists
+SCREENSHOTS_DIR="$HOME/Pictures/screenshots"
+mkdir -p "$SCREENSHOTS_DIR"
+
+# Function to take a screenshot
+screenshot() {
+    mode="$1"
+    filename_prefix="$2"
+    filename="$SCREENSHOTS_DIR/screenshot-$(date -u +'%Y%m%d-%H%M%SZ')-$filename_prefix.png"
+
+    # Ensure `maim` and `xclip` are installed
+    if ! command -v maim > /dev/null 2>&1 || ! command -v xclip > /dev/null 2>&1; then
+        echo "Error: 'maim' and 'xclip' are required but not installed." >&2
+        exit 1
+    fi
+
+    # Take the screenshot and save it
+    # shellcheck disable=SC3001
+    # shellcheck disable=SC2086
+    maim --format=png $mode | tee >(xclip -selection clipboard -t image/png) >(cat > "$filename")
+    
+    # Notify the user
+    dunstify -a "Screenshot" \
+             -i "$filename" \
+             -t 5000 \
+             "Screenshot Saved" \
+             "Your screenshot has been saved as: $filename" \
+             -r 100
+}
+
+# Show usage information
+usage() {
+    echo "Usage: $0 {all|window|select}" >&2
+    exit 1
+}
+
+# Main script logic
+case "$1" in
+    all)
+        screenshot "" "all"
+        ;;
+    window)
+        if command -v xdotool > /dev/null 2>&1; then
+            screenshot "--window $(xdotool getactivewindow)" "current"
+        else
+            echo "Error: 'xdotool' is required but not installed." >&2
+            exit 1
+        fi
+        ;;
+    select)
+        screenshot "--select" "selected"
+        ;;
+    *)
+        usage
+        ;;
+esac

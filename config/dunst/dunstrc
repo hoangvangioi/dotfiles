@@ -1,0 +1,82 @@
+[global]
+    title = Dunst
+    class = Dunst
+    follow = mouse
+    origin = bottom-center
+    progress_bar = false
+    vertical_alignment = center
+    font = JetBrainsMono Nerd 10
+
+    width = (110, 300)
+    height = 100
+    offset = 15x15 
+    corner_radius = 10 
+    separator_height = 1
+    padding = 16
+    horizontal_padding = 24
+    text_icon_padding = 16
+    alignment = left
+    frame_width = 1
+    frame_color = "#303446"
+    separator_color = foreground
+
+    min_icon_size = 0
+    max_icon_size = 64
+    icon_corner_radius = 10
+    icon_path = /usr/local/bin/icons/
+    icon_theme = "Adwaita, Papirus-Dark"
+    enable_recursive_icon_lookup = true
+
+    timeout = 3
+    sort = true 
+    markup = full
+    line_height = 0
+    stack_duplicates = false
+    hide_duplicate_count = true 
+    word_wrap = false
+    ellipsize = end
+    show_indicators = yes
+    indicate_hidden = false 
+    idle_threshold = 120s
+    show_age_threshold = 60
+    dmenu = /usr/bin/rofi -p dunst:
+    browser = /usr/bin/firefox --new-tab
+
+[experimental]
+    per_monitor_dpi = false
+
+[urgency_low]
+    background = "#1e1e2e"
+    foreground = "#99AEB3"
+    timeout = 8
+    # highlight = "#6fa6e7"
+    # frame_color = "#272f57"
+
+[urgency_normal]
+    background = "#1e1e2e"
+    foreground = "#99AEB3"
+    timeout = 8
+    # highlight = "#5ca1ff"
+    # frame_color = "#272f57"
+
+[urgency_critical]
+    background = "#EBA0AC"
+    foreground = "#1E1E2E"
+    timeout = 0
+    # highlight = "#fe6c5a"
+    # frame_color = "#52426e"
+    # icon = battery-ac-adapter
+
+[backlight]
+    appname = "Backlight"
+    highlight = "#fc7b80"
+
+[music]
+    appname = "Music"
+
+[volume]
+    summary = "Volume*"
+    highlight = "#cb8cf4"
+
+[battery]
+    appname = "Power Warning"

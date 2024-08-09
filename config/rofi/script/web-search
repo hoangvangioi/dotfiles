@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+
+set -u
+set -e
+
+declare -A SITES
+declare -A ICONS
+
+# Set default variable value to empty string.
+SITE_TO_USE=""
+
+CACHE_DIR="$HOME/.cache/rofi/web-search"
+BROWSER="microsoft-edge-stable"
+
+SITES=(
+    ["google"]="https://www.google.com/search?q="
+    ["stackoverflow"]="https://www.stackoverflow.com/search?q="
+    ["stackexchange"]="https://stackexchange.com/search?q="
+    ["superuser"]="https://superuser.com/search?q="
+    ["tex"]="https://tex.stackexchange.com/search?q="
+    ["softwareengineering"]="https://softwareengineering.stackexchange.com/search?q="
+    ["github"]="https://www.github.com/search?q="
+    ["youtube"]="https://www.youtube.com/results?search_query="
+)
+
+ICONS=(
+    ["google"]="$HOME/.config/rofi/icons/google.svg"
+    ["stackoverflow"]="$HOME/.config/rofi/icons/stackoverflow.svg"
+    ["stackexchange"]="$HOME/.config/rofi/icons/stackexchange.svg"
+    ["superuser"]="$HOME/.config/rofi/icons/superuser.svg"
+    ["tex"]="$HOME/.config/rofi/icons/tex.svg"
+    ["softwareengineering"]="$HOME/.config/rofi/icons/softwareengineering.svg"
+    ["github"]="$HOME/.config/rofi/icons/github.svg"
+    ["youtube"]="$HOME/.config/rofi/icons/youtube.svg"
+)
+
+# Show usage for the script.
+usage() {
+    echo "web-search is a script that opens a rofi browser with which you can"
+    echo "search the web."
+    echo ""
+    echo "Usage: $0 [-s <site to search>] [-b <browser executable> ]"
+    echo "  -h      show this help"
+    echo "  -s      give the search engine to use, can be one of the following:"
+
+    for site in "${!SITES[@]}"; do
+        echo "              * $site"
+    done
+
+    echo "  -b      give the browser to use, the default value is 'google-chrome-stable'"
+
+    exit 1
+}
+
+# Creates the cache directory if it does not exist.
+create_cache_dir() {
+    mkdir -p "$CACHE_DIR"
+}
+
+# Create the cache files if they do not exist.
+create_cache_files() {
+    for site in "${!SITES[@]}"; do
+        [ -f "$CACHE_DIR/$site.txt" ] || touch "$CACHE_DIR/$site.txt"
+    done
+}
+
+# Generate the list of sites.
+#
+# If a config file exists, use the sites from that list, otherwise populate
+# the list with the sites from the $SITES variable.
+gen_sites_list() {
+    menu_items=""
+    for site in "${!SITES[@]}"; do
+        menu_items+="$site\x00icon\x1f${ICONS[$site]}\n"
+    done
+    echo -e "${menu_items%\\n}"
+}
+
+# Generate the list of previously used search queries.
+gen_queries_list() {
+    site=$1
+
+    cat "$CACHE_DIR/$site.txt"
+}
+
+# Write a given line to a given file to the top of the file.
+#
+# It does this by creating a temporary file and then catting that output to the
+# file after echoing the new line.
+#
+# Expects 2 arguments:
+#  - The name of the file to write to, must be one of the options of sites in
+#    the SITES array.
+#  - The new line to input at the top of the new file.
+write_to_top() {
+    file=$1
+    content=$2
+
+    # Move old values to temporary file.
+    cat "$CACHE_DIR/$file.txt" >"$CACHE_DIR/tmp.txt"
+    # Print query to top.
+    echo "$content" >"$CACHE_DIR/$file.txt"
+    cat "$CACHE_DIR/tmp.txt" >>"$CACHE_DIR/$file.txt"
+    # Remove temporary file.
+    rm "$CACHE_DIR/tmp.txt"
+
+}
+
+# Handle the query.
+handle_query() {
+    site=$1
+    query=$2
+
+    # Write the query to file.
+    # Check if the search query already exists.
+    if grep -Fxq "$query" "$CACHE_DIR/$site.txt"; then
+        # Remove the existing entry.
+        grep -xvF "$query" "$CACHE_DIR/$site.txt" >"$CACHE_DIR/$site.tmp"
+        mv "$CACHE_DIR/$site.tmp" "$CACHE_DIR/$site.txt"
+    fi
+    # Write the new entry on top.
+    write_to_top "$site" "$query"
+
+    # Open the corresponding site in google-chrome-stable.
+    # google-chrome-stable "${SITES[$site]}$query"
+    $BROWSER "${SITES[$site]}$query"
+}
+
+main() {
+    create_cache_dir
+    create_cache_files
+
+    if [ "$@" ]; then
+        handle_query "google" "$@"
+    else
+        # Check if search engine set.
+        if [ "$SITE_TO_USE" ]; then
+            query=$(gen_queries_list "$SITE_TO_USE" | rofi -theme ~/.config/rofi/themes/launcher.rasi -dmenu -p "Search ($SITE_TO_USE)")
+
+            handle_query "$SITE_TO_USE" "$query"
+        else
+            site=$(gen_sites_list | rofi -theme ~/.config/rofi/themes/launcher.rasi -dmenu -p "Search" -no-custom)
+            query=$(gen_queries_list "$site" | rofi -theme ~/.config/rofi/themes/launcher.rasi -dmenu -p "Search ($site)")
+
+            handle_query "$site" "$query"
+        fi
+    fi
+}
+
+# Get argument options.
+while getopts ":s:b:" o; do
+    case "${o}" in
+    s)
+        SITE_TO_USE=${OPTARG}
+        ;;
+    b)
+        BROWSER=${OPTARG}
+        ;;
+    \?)
+        usage
+        ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+main "$@"

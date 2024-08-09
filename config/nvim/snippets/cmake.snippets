@@ -1,0 +1,147 @@
+snippet lspdb
+	set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+snippet cmakeEM_6ull
+	cmake_minimum_required(VERSION 3.10)
+
+	set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+	project(${1})
+
+	set(CMAKE_SYSTEM_NAME Linux)
+	set(CMAKE_SYSTEM_PROCESSOR arm)
+
+	set(TOOLCHAIN_DIR /opt/fsl-imx-x11/4.1.15-2.0.0/sysroots)
+	set(CMAKE_SYSROOT \${TOOLCHAIN_DIR}/cortexa7hf-neon-poky-linux-gnueabi)
+
+	set(CMAKE_C_COMPILER \${TOOLCHAIN_DIR}/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gcc)
+	set(CMAKE_CXX_COMPILER \${TOOLCHAIN_DIR}/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-g++)
+
+	set(CMAKE_C_FLAGS "-march=armv7ve -mfpu=neon  -mfloat-abi=hard -mcpu=cortex-a7")
+	set(CMAKE_CXX_FLAGS "-march=armv7ve -mfpu=neon  -mfloat-abi=hard -mcpu=cortex-a7")
+
+	set(LIB1 \${CMAKE_CURRENT_SOURCE_DIR}/)
+
+	set(SOURCES
+		${2:./main.c}
+	)
+
+	include_directories(
+		${3:./}
+	)
+
+	link_directories(\${LIB1})
+
+	add_executable(${1} \${SOURCES})
+
+	target_link_libraries(${1})
+
+snippet init
+	cmake_minimum_required(VERSION ${1:3.10})
+
+	set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+	project(${2:ProjectName})
+
+	find_package(${3:library})
+
+	include_directories(${$3_INCLUDE_DIRS})
+
+	add_subdirectory(${0:src})
+
+	add_executable($2)
+
+	target_link_libraries($2 ${$3_LIBRARIES})
+
+snippet proj
+	project(${0:Name})
+
+snippet mincpp
+	cmake_minimum_required(VERSION ${0:3.10})
+
+	set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+	set(CMAKE_BUILD_TYPE "Debug")
+	set(CMAKE_CXX_FLAGS_DEBUG "\$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
+	set(CMAKE_CXX_FLAGS_RELEASE "\$ENV{CXXFLAGS} -O3 -Wall")
+
+	project(demo)
+
+	add_executable(demo ${1:main}.c)
+	
+snippet minc
+	cmake_minimum_required(VERSION 3.10)
+
+	set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+	set(CMAKE_BUILD_TYPE "Debug")
+	set(CMAKE_C_FLAGS_DEBUG "\$ENV{CFLAGS} -O0 -Wall -g -ggdb")
+	set(CMAKE_C_FLAGS_RELEASE "\$ENV{CFLAGS} -O3 -Wall")
+
+	project(demo)
+
+	add_executable(demo ${0:main}.c)
+
+snippet include
+	include_directories(${${0:include_dir}})
+
+snippet find
+	find_package(${1:library} ${0:REQUIRED})
+
+snippet glob
+	file(glob ${1:srcs} *.${0:cpp})
+
+snippet subdir
+	add_subdirectory(${0:src})
+
+snippet lib
+	add_library(${1:lib} ${${0:srcs}})
+
+snippet link
+	target_link_libraries(${1:bin} ${0:somelib})
+
+snippet bin
+	add_executable(${1:bin})
+
+snippet set
+	set(${1:var} ${0:val})
+
+snippet dep
+	add_dependencies(${1:target}
+		${0:dep}
+	)
+
+snippet Ext_url
+	include(ExternalProject)
+	ExternalProject_Add(${1:googletest}
+	  URL ${2:http://googletest.googlecode.com/files/gtest-1.7.0.zip}
+	  URL_HASH SHA1=${3:f85f6d2481e2c6c4a18539e391aa4ea8ab0394af}
+	  SOURCE_DIR "${4:${CMAKE_BINARY_DIR}/gtest-src}"
+	  BINARY_DIR "${0:${CMAKE_BINARY_DIR}/gtest-build}"
+	  CONFIGURE_COMMAND ""
+	  BUILD_COMMAND     ""
+	  INSTALL_COMMAND   ""
+	  TEST_COMMAND      ""
+	)
+
+snippet Ext_git
+	include(ExternalProject)
+	ExternalProject_Add(${1:googletest}
+	  GIT_REPOSITORY    ${2:https://github.com/google/googletest.git}
+	  GIT_TAG           ${3:master}
+	  SOURCE_DIR        "${4:${CMAKE_BINARY_DIR}/googletest-src}"
+	  BINARY_DIR        "${0:${CMAKE_BINARY_DIR}/googletest-build}"
+	  CONFIGURE_COMMAND ""
+	  BUILD_COMMAND     ""
+	  INSTALL_COMMAND   ""
+	  TEST_COMMAND      ""
+	)
+
+snippet props
+	set_target_properties(${1:target}
+		${2:properties} ${3:compile_flags}
+		${0:"-O3 -Wall -pedantic"}
+	)
+
+snippet test
+	add_test(${1:ATestName} ${0:testCommand --options})

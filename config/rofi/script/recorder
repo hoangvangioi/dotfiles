@@ -1,0 +1,138 @@
+#!/bin/sh
+
+VIDEOS_DIR="$HOME/Videos"
+AUDIO_DIR="$HOME/Music"
+
+mkdir -p "$VIDEOS_DIR"
+mkdir -p "$AUDIO_DIR"
+
+PID_FILE="/tmp/recordingpid"
+
+DATE=$(date '+%d-%m-%Y-%H-%M-%S')
+
+# Get screen dimensions
+getdim() {
+    xrandr | sed -n "s/\s*\([0-9]\+x[0-9]\+\).*\*.*/\1/p"
+}
+
+# Send a notification
+notify() {
+    notify-send "$1" "$2"
+}
+
+# Stop all recording sessions
+stop() {
+    if [ -f "$PID_FILE" ]; then
+        recpid="$(cat "$PID_FILE")"
+        kill -15 "$recpid"
+        rm -f "$PID_FILE"
+        notify "Recording Stopped" "All recording processes have been stopped."
+    else
+        notify "No Recording" "No recording process found to stop."
+    fi
+    pkill -fxn '(/\S+)*ffmpeg\s.*\sx11grab\s.*'
+    pkill -fxn '(/\S+)*ffmpeg\s.*\spulse\s.*'
+}
+
+# Record full screen video
+video_full_screen() {
+    ffmpeg -y -f x11grab -framerate 60 -s "$(getdim)" -i "$DISPLAY" -r 24 -use_wallclock_as_timestamps 1 -f alsa -thread_queue_size 1024 -i default -c:v h264 -crf 0 -preset ultrafast -c:a aac "$VIDEOS_DIR/video-fullscreen-$DATE.mp4" &
+    echo $! >"$PID_FILE"
+    notify "Recording Started" "Full screen video recording started."
+}
+
+# Record video of selected area
+video_selected_area() {
+    slop="$(slop -n -f '%w,%h,%x,%y')"
+    w=$(echo "$slop" | cut -d ',' -f1)
+    h=$(echo "$slop" | cut -d ',' -f2)
+    x=$(echo "$slop" | cut -d ',' -f3)
+    y=$(echo "$slop" | cut -d ',' -f4)
+    wh="${w}x${h}"
+
+    ffmpeg -y -f x11grab -video_size "$wh" -framerate 60 -i :0.0+"$x","$y" -pix_fmt yuv420p "$VIDEOS_DIR/video-area-$DATE.mp4" &
+    echo $! >"$PID_FILE"
+    notify "Recording Started" "Selected area video recording started."
+}
+
+# Record audio from microphone
+audio_microphone() {
+    ffmpeg -f alsa -i default -c:a flac "$AUDIO_DIR/audio-microphone-$DATE.flac" &
+    echo $! >"$PID_FILE"
+    notify "Recording Started" "Microphone audio recording started."
+}
+
+# Record audio from desktop
+audio_desktop() {
+    desktop_source=$(pacmd list-sources | grep -E '^\s+name: .*alsa_output' | cut -c 8- | sed 's/[<,>]//g')
+    ffmpeg -f pulse -i "$desktop_source" -c:a flac "$AUDIO_DIR/audio-desktop-$DATE.flac" &
+    echo $! >"$PID_FILE"
+    notify "Recording Started" "Desktop audio recording started."
+}
+
+# Record video of selected area with audio from microphone
+video_selected_area_audio_microphone() {
+    slop="$(slop -n -f '%w,%h,%x,%y')"
+    w=$(echo "$slop" | cut -d ',' -f1)
+    h=$(echo "$slop" | cut -d ',' -f2)
+    x=$(echo "$slop" | cut -d ',' -f3)
+    y=$(echo "$slop" | cut -d ',' -f4)
+    wh="${w}x${h}"
+
+    ffmpeg -y -f x11grab -video_size "$wh" -framerate 60 -i :0.0+"$x","$y" -f alsa -i default -pix_fmt yuv420p "$VIDEOS_DIR/video-area-audio-$DATE.mp4" &
+    echo $! >"$PID_FILE"
+    notify "Recording Started" "Selected area video with microphone audio recording started."
+}
+
+# Record full screen video with audio from microphone
+video_full_screen_audio_microphone() {
+    ffmpeg -y -f x11grab -framerate 60 -s "$(getdim)" -i "$DISPLAY" -f alsa -i default -pix_fmt yuv420p "$VIDEOS_DIR/video-fullscreen-audio-$DATE.mp4" &
+    echo $! >"$PID_FILE"
+    notify "Recording Started" "Full screen video with microphone audio recording started."
+}
+
+get_options() {
+    if [ -f "$PID_FILE" ]; then
+        echo "󰕨  Stop Recording"
+    fi
+    echo "󰦲  Selected area video"
+    echo "󰕧  Full screen video"
+    echo "  Record audio (microphone)"
+    echo "  Record audio (desktop)"
+    echo "󰦲  Selected area video with audio (microphone)"
+    echo "󰕧  Full screen video with audio (microphone)"
+}
+
+main() {
+    choice=$(printf "%b" "$(get_options)" | rofi -i -theme ~/.config/rofi/themes/launcher.rasi -dmenu -no-show-icons -no-sidebar-mode -lines 4 -width 30 -p "  ")
+
+    case $choice in
+    '󰕨  Stop Recording')
+        stop
+        ;;
+    '󰦲  Selected area video')
+        video_selected_area
+        ;;
+    '󰕧  Full screen video')
+        video_full_screen
+        ;;
+    '  Record audio (microphone)')
+        audio_microphone
+        ;;
+    '  Record audio (desktop)')
+        audio_desktop
+        ;;
+    '󰦲  Selected area video with audio (microphone)')
+        video_selected_area_audio_microphone
+        ;;
+    '󰕧  Full screen video with audio (microphone)')
+        video_full_screen_audio_microphone
+        ;;
+    *)
+        exit 0
+        ;;
+    esac
+}
+
+main &
+exit 0

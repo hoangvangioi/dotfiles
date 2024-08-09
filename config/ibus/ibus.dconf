@@ -1,0 +1,12 @@
+[general]
+engines-order=['xkb:us::eng', 'Bamboo']
+preload-engines=['xkb:us::eng', 'Bamboo']
+use-system-keyboard-layout=true
+use-global-engine=true
+version='1.5.30'
+
+[general/hotkey]
+triggers=['<Alt>space']
+
+[panel]
+show-icon-on-systray=false

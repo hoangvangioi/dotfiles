@@ -1,0 +1,161 @@
+#!/bin/bash
+
+DIR="$HOME/.config/rofi/themes"
+
+# Function to send playerctl commands to Spotify
+player_action() {
+    # shellcheck disable=SC2086
+    playerctl --player=spotify $1
+}
+
+# Get the status of the player
+STATUS=$(player_action status)
+
+# Retrieve metadata
+getmeta() {
+    playerctl --player=spotify metadata --format "{{ $1 }}"
+}
+
+# Retrieve track duration
+getduration() {
+    playerctl metadata --format "{{ duration($1) }}"
+}
+
+# Format track information
+ARTIST=$(getmeta artist)
+TITLE=$(getmeta title)
+ALBUM=$(getmeta album)
+LENGTH=$(getduration mpris:length)
+POSITION=$(getduration position)
+FORMAT="$ARTIST - $ALBUM"
+DURATION="$POSITION/$LENGTH"
+
+# Define icons for player controls
+if [[ $STATUS == "Playing" ]]; then
+    ICON_TOGGLE=""
+elif [[ $STATUS == "Paused" ]]; then
+    ICON_TOGGLE=""
+else
+    ICON_TOGGLE=""
+fi
+ICON_STOP=""
+ICON_PREV=""
+ICON_NEXT=""
+ICON_BACKWARD=""
+ICON_FORWARD=""
+ICON_SHUFFLE="󰒝"
+ICON_REPEAT="󰑖"
+
+# Icon order and positions
+ICON_FORMAT="$ICON_TOGGLE\n$ICON_STOP\n$ICON_BACKWARD\n$ICON_FORWARD\n$ICON_PREV\n$ICON_NEXT\n$ICON_SHUFFLE\n$ICON_REPEAT"
+ACTIVE_SHUFFLE_POS="6"
+URGENT_SHUFFLE_POS="6"
+ACTIVE_REPEAT_POS="7"
+URGENT_REPEAT_POS="7"
+
+# Check shuffle status
+SHUFFLE_STATUS=$(playerctl --player=spotify shuffle)
+if [[ $SHUFFLE_STATUS == "On" ]]; then
+    active="-a $ACTIVE_SHUFFLE_POS"
+elif [[ $SHUFFLE_STATUS == "Off" ]]; then
+    urgent="-u $URGENT_SHUFFLE_POS"
+else
+    echo "Unexpected shuffle case"
+fi
+
+# Check repeat status
+REPEAT_STATUS=$(playerctl --player=spotify loop)
+if [[ $REPEAT_STATUS == "Track" || $REPEAT_STATUS == "Playlist" ]]; then
+    [ -n "$active" ] && active+=",$ACTIVE_REPEAT_POS" || active="-a $ACTIVE_REPEAT_POS"
+elif [[ $REPEAT_STATUS == "None" ]]; then
+    [ -n "$urgent" ] && urgent+=",$URGENT_REPEAT_POS" || urgent="-u $URGENT_REPEAT_POS"
+else
+    echo "Unexpected loop check case"
+fi
+
+# General function to display rofi menus
+rofi_display() {
+    # shellcheck disable=SC2086
+    printf "%b" "$ICON_FORMAT" | rofi -dmenu \
+        -p "$FORMAT" \
+        -theme-str "entry { enabled: false;}" \
+        -theme-str "textbox-prompt-colon { str: \"$1\";}" \
+        -theme-str "textbox-prompt-colon { background-color: $2;}" \
+        -mesg "$TITLE :: $DURATION" \
+        ${active} ${urgent} \
+        -theme "$DIR/spotify.rasi"
+}
+
+# Icons for when no player is running
+ICON_YES="󰿄"
+ICON_NO=""
+NO_PLAYER_RUNNING_FORMAT="$ICON_YES\n$ICON_NO"
+
+# Confirmation dialog when no player is running
+confirm_cmd() {
+    printf "%b" "$NO_PLAYER_RUNNING_FORMAT" | rofi -dmenu \
+        -p 'Confirmation' \
+        -theme-str 'textbox-prompt-colon { str: " ";}' \
+        -theme-str "listview {columns: 2; lines: 1;}" \
+        -theme-str "window {width: 500px; location: center; anchor: center;}" \
+        -mesg 'Spotify is currently not running. Would you like to open Spotify?' \
+        -theme "$DIR/spotify.rasi"
+}
+
+# Display appropriate menu based on player status
+case $STATUS in
+    Playing)
+        OUTPUT=$(rofi_display "󰎈" "@magenta")
+        ;;
+    Paused)
+        OUTPUT=$(rofi_display "󰎊" "@orange")
+        ;;
+    *)
+        OUTPUT=$(confirm_cmd)
+        ;;
+esac
+
+# Handle user input
+case $OUTPUT in
+    "$ICON_TOGGLE")
+        player_action play-pause
+        ;;
+    "$ICON_BACKWARD")
+        player_action "position 10-"
+        ;;
+    "$ICON_FORWARD")
+        player_action "position 10+"
+        ;;
+    "$ICON_PREV")
+        player_action previous
+        ;;
+    "$ICON_NEXT")
+        player_action next
+        ;;
+    "$ICON_REPEAT")
+        LOOP_STATUS=$(player_action loop)
+        if [[ $LOOP_STATUS == "Track" || $LOOP_STATUS == "Playlist" ]]; then
+            player_action "loop none"
+        elif [[ $LOOP_STATUS == "None" ]]; then
+            player_action "loop Track"
+        else
+            echo "Unexpected loop case"
+        fi
+        ;;
+    "$ICON_SHUFFLE")
+        player_action "shuffle toggle"
+        ;;
+    "$ICON_STOP")
+        player_action stop
+        ;;
+    "$ICON_YES")
+        spotify
+        ;;
+    "$ICON_NO")
+        echo "Script exited"
+        exit
+        ;;
+    *)
+        echo "Unexpected input"
+        ;;
+esac

@@ -1,0 +1,12 @@
+[SddmGreeterTheme]
+Name=sddm-arch-theme
+Description=sddm-arch-theme
+License=GPL-3.0-or-later
+Type=sddm-arch-theme
+Version=1.0
+MainScript=Main.qml
+ConfigFile=theme.conf
+TranslationsDirectory=translations
+Theme-Id=sddm-arch-theme
+Theme-API=2.0
+QtVersion=6

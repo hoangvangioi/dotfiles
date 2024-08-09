@@ -1,0 +1,32 @@
+#!/bin/sh
+
+screen="HDMI-1"
+dir_icons="/usr/local/bin/icons"
+
+current_bright_float=$(xrandr --verbose | awk -v screen="$screen" '
+    $0 ~ screen { found=1 }
+    found && /Brightness:/ { print $2; exit }
+')
+current_bright_int=$(awk -v bright="$current_bright_float" 'BEGIN { printf("%d", bright * 100 + 0.5) }')
+
+if [ "$1" = "up" ] || [ "$1" = "+" ]; then
+    new_bright_int=$($current_bright_int + 1)
+fi
+if [ "$1" = "down" ] || [ "$1" = "-" ]; then
+    new_bright_int=$($current_bright_int - 1)
+fi
+
+new_bright_float=$(awk -v bright="$new_bright_int" 'BEGIN { printf("%.2f", bright / 100) }')
+
+if [ "$(awk -v bright="$new_bright_float" 'BEGIN { print (bright < 0) }')" -eq 1 ]; then
+    exit
+fi
+
+xrandr --output $screen --brightness "$new_bright_float"
+
+# send notification
+dunstify -a "Screen" \
+    "Screen ($screen)" \
+    "Brightness: $new_bright_int%" \
+    -r 100 \
+    -i "$dir_icons/sun.svg"
