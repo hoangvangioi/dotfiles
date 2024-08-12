@@ -71,6 +71,7 @@ create_backup() {
     done
 
     if [ -d "$SCRIPTS_DIR" ]; then
+        # shellcheck disable=SC2153
         sudo mv "$SCRIPTS_DIR" "$SCRIPTS_DIR_$DATE"
         echo "Scripts directory backed up."
     fi
@@ -162,6 +163,16 @@ install_sddm() {
 Current=sddm-arch-theme" | sudo tee /etc/sddm.conf
 }
 
+# Function to install SDDM theme
+install_grub_theme() {
+    echo -e "${GREEN}[*] Installing Grub Bootloader theme...${NO_COLOR}"
+    git clone https://github.com/hoangvangioi/arch-grub-theme.git
+    cd arch-grub-theme
+    ./install.sh
+    cd ..
+    rm -rf arch-grub-theme
+}
+
 # Display dialog to select tasks
 cmd=(dialog --clear --separate-output --checklist "Select tasks to perform (press space to select).\\n\
 Checked options are required for proper installation.\\nDo not uncheck if you are unsure." 21 80 15)
@@ -179,6 +190,7 @@ options=(
     10 "Install Ibus Bamboo" off
     11 "Install VSCode extensions" off
     12 "Install SDDM theme" off
+    13 "Install Grub Bootloader theme" off
 )
 
 choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
@@ -200,6 +212,7 @@ for choice in $choices; do
     10) install_ibus_bamboo ;;
     11) install_vsc ;;
     12) install_sddm ;;
+    13) install_grub_theme ;;
     esac
 done
 
