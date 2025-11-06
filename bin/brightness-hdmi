@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Configuration
+screen="${HDMI_SCREEN:-HDMI-1}"
+dir_icons="/usr/local/bin/icons"
+step=${BRIGHTNESS_STEP:-1}
+
+# Check required commands
+for cmd in xrandr awk dunstify; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd not found" >&2
+        exit 1
+    fi
+done
+
+# Validate input
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <up|down|+|->" >&2
+    exit 1
+fi
+
+# Check if screen exists
+if ! xrandr | grep -q "^$screen connected"; then
+    echo "Error: Screen $screen not found or not connected" >&2
+    exit 1
+fi
+
+# Get current brightness
+current_bright_float=$(xrandr --verbose | awk -v screen="$screen" '
+    $0 ~ screen { found=1 }
+    found && /Brightness:/ { print $2; exit }
+')
+
+if [ -z "$current_bright_float" ]; then
+    echo "Error: Could not get brightness for $screen" >&2
+    exit 1
+fi
+
+current_bright_int=$(awk -v bright="$current_bright_float" 'BEGIN { printf("%d", bright * 100 + 0.5) }')
+
+# Calculate new brightness
+case "$1" in
+    up|+)
+        new_bright_int=$((current_bright_int + step))
+        ;;
+    down|-)
+        new_bright_int=$((current_bright_int - step))
+        ;;
+    *)
+        echo "Error: Invalid argument '$1'. Use up, down, + or -" >&2
+        exit 1
+        ;;
+esac
+
+# Clamp brightness between 0 and 100
+if [ "$new_bright_int" -lt 0 ]; then
+    new_bright_int=0
+elif [ "$new_bright_int" -gt 100 ]; then
+    new_bright_int=100
+fi
+
+new_bright_float=$(awk -v bright="$new_bright_int" 'BEGIN { printf("%.2f", bright / 100) }')
+
+# Set brightness
+xrandr --output "$screen" --brightness "$new_bright_float"
+
+# Send notification
+icon="${dir_icons}/sun.svg"
+if [ ! -f "$icon" ]; then
+    icon="display-brightness-symbolic"
+fi
+
+dunstify -a "Screen" \
+    "Screen ($screen)" \
+    "Brightness: $new_bright_int%" \
+    -r 100 \
+    -i "$icon"
