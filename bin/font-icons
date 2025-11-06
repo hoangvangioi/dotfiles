@@ -1,14 +1,101 @@
-#!/bin/sh 
+#!/bin/bash
 
-for range in $(fc-match --format='%{charset}\n' "$1"); do     
-    for n in $(seq "0x${range%-*}" "0x${range#*-}"); do
+set -euo pipefail
+
+# Default options
+font="${1:-}"
+columns=10
+range=""
+format="table"
+
+# Check required commands
+if ! command -v fc-match &>/dev/null; then
+    echo "Error: fc-match not found. Please install fontconfig." >&2
+    exit 1
+fi
+
+# Process command line options
+while getopts "f:c:r:o:" opt; do
+    case $opt in
+    f) font="$OPTARG" ;;
+    c) 
+        if ! [[ "$OPTARG" =~ ^[0-9]+$ ]] || [ "$OPTARG" -le 0 ]; then
+            echo "Error: Columns must be a positive number" >&2
+            exit 1
+        fi
+        columns="$OPTARG"
+        ;;
+    r) range="$OPTARG" ;;
+    o) 
+        if [[ ! "$OPTARG" =~ ^(table|list)$ ]]; then
+            echo "Error: Format must be 'table' or 'list'" >&2
+            exit 1
+        fi
+        format="$OPTARG"
+        ;;
+    \?)
+        echo "Invalid option: -$OPTARG" >&2
+        exit 1
+        ;;
+    esac
+done
+
+# Show usage if font not specified
+if [ -z "$font" ]; then
+    cat <<-EOF >&2
+Usage: $0 <font> [options]
+   or: $0 -f <font> [options]
+
+Display Unicode characters/icons from a font.
+
+Options:
+  -f <font>      Font name (required if not first argument)
+  -c <columns>   Number of columns in table format (default: 10)
+  -r <range>     Unicode range in hex (e.g., e000-e0ff)
+  -o <format>    Output format: table or list (default: table)
+
+Examples:
+  $0 "JetBrainsMono Nerd Font"
+  $0 -f "Font Awesome 6 Free" -c 8 -o table
+  $0 -f "Material Design Icons" -r e000-e0ff
+EOF
+    exit 1
+fi
+
+# Check if font exists
+if ! fc-match "$font" >/dev/null 2>&1; then
+    echo "Error: Font '$font' not found." >&2
+    echo "Use 'fc-list' to see available fonts." >&2
+    exit 1
+fi
+
+# Function to display Unicode characters
+display_unicode() {
+    local start="$1"
+    local end="$2"
+    local count=0
+
+    for n in $(seq "$start" "$end"); do
+        local n_hex
         n_hex=$(printf "%04x" "$n")
-        # using \U for 5-hex-digits
-        printf "%-5s\U$n_hex\t" "$n_hex"
+        if [ "$format" = "table" ]; then
+            printf "%-5s\U$n_hex\t" "$n_hex"
+        elif [ "$format" = "list" ]; then
+            printf "U+$n_hex\t\U$n_hex\n"
+        fi
         count=$((count + 1))
-        if [ $((count % 10)) = 0 ]; then
+        if [ "$format" = "table" ] && [ $((count % columns)) = 0 ]; then
             printf "\n"
         fi
     done
-done
-printf "\n"
+    printf "\n"
+}
+
+# Process character range
+if [ -z "$range" ]; then
+    for r in $(fc-match --format='%{charset}\n' "$font"); do
+        display_unicode "0x${r%-*}" "0x${r#*-}"
+    done
+else
+    display_unicode "0x${range%-*}" "0x${range#*-}"
+fi
