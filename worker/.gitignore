@@ -1,0 +1,25 @@
+# Rust build
+target/
+Cargo.lock
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Wrangler
+.wrangler/
+worker-configuration.d.ts
+
+# Generated files
+dist/
+src/generated_files.rs
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.env

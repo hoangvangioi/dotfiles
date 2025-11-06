@@ -1,0 +1,12 @@
+[package]
+name = "hellow"
+version = "0.1.0"
+edition = "2021"
+authors = ["Hoang Van Gioi <gioitube2k2@gmail.com>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "0.6" }
+worker-macros = { version = "0.6" }
