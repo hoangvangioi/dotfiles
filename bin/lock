@@ -1,5 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 
+set -euo pipefail
+
+# Dracula theme colors
 alpha='dd'
 selection='#44475a'
 orange='#ffb86c'
@@ -8,14 +11,30 @@ magenta='#ff79c6'
 blue='#6272a4'
 green='#50fa7b'
 
-dunstctl set-paused true
+# Check required commands
+if ! command -v i3lock &>/dev/null; then
+    echo "Error: i3lock not found. Please install i3lock-color." >&2
+    exit 1
+fi
+
+# Cleanup function to ensure notifications are resumed
+cleanup() {
+    if command -v dunstctl &>/dev/null; then
+        dunstctl set-paused false
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
+# Pause notifications
+if command -v dunstctl &>/dev/null; then
+    dunstctl set-paused true
+fi
 
 i3lock \
     --insidever-color=$selection$alpha \
     --insidewrong-color=$selection$alpha \
     --inside-color=$selection$alpha \
-    --ringver-color=$green$alpha \
-    --ringwrong-color=$red$alpha \
     --ringver-color=$green$alpha \
     --ringwrong-color=$red$alpha \
     --ring-color=$blue$alpha \
@@ -49,6 +68,7 @@ i3lock \
     --date-font="JetBrainsMono Nerd Font" \
     --layout-font="JetBrainsMono Nerd Font" \
     --verif-font="JetBrainsMono Nerd Font" \
-    --wrong-font="JetBrainsMono Nerd Font"
+    --wrong-font="JetBrainsMono Nerd Font" \
+    --keylayout 1
 
-dunstctl set-paused false
+# Cleanup will be called automatically via trap
