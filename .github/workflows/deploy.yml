@@ -1,0 +1,43 @@
+name: Deploy Cloudflare Rust Worker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install Wrangler v4
+      - name: Install Wrangler v4
+        run: npm install --save-dev wrangler@latest
+
+      # Run Bash script to generate generated_files.rs
+      - name: Generate Rust files from demo
+        run: |
+          chmod +x ./worker/generate-files.sh
+          cd worker && ./generate-files.sh
+
+      - name: Generate routes
+        run: |
+          cd worker
+          sed -i '/\[\[routes\]\]/,$d' wrangler.toml
+          echo "" >> wrangler.toml
+          echo "[[routes]]" >> wrangler.toml
+          echo "pattern = \"${DOMAIN}\"" >> wrangler.toml
+          echo "custom_domain = true" >> wrangler.toml
+        env:
+          DOMAIN: ${{ secrets.DOMAIN }}
+
+      # Deploy Worker using official action
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: ./worker
