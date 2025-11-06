@@ -1,0 +1,25 @@
+# Build artifacts
+dist/
+
+# Rust/Cargo
+worker/target/
+Cargo.lock
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
