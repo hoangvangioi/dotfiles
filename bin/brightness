@@ -1,23 +1,138 @@
-#!/bin/sh
+#!/bin/bash
 
-dir_icons="/usr/local/bin/icons"
+set -euo pipefail
 
-max_bri=$(cat /sys/class/backlight/*/max_brightness)
-cur_bri=$(cat /sys/class/backlight/*/brightness)
+# Brightness control and notifications
 
-# calculating current percentage
-cur_per=$((cur_bri * 100 / max_bri))
+# Colors
+COLOR_RESET=$'\033[0m'
+COLOR_GREEN=$'\033[0;32m'
+COLOR_YELLOW=$'\033[0;33m'
 
-if [ "$cur_per" -ge 50 ]; then
-    dunstify -a "Screen" \
-        "Screen" \
-        "Brightness: $cur_per%" \
-        -r 100 \
-        -i "$dir_icons"/sun.svg
-else
-    dunstify -a "Screen" \
-        "Screen" \
-        "Brightness: $cur_per%" \
-        -r 100 \
-        -i "$dir_icons"/moon.svg
+EX_OK=0
+EX_USAGE=64
+USE_DUNSTIFY=true
+DEFAULT_STEP=${BRIGHTNESS_STEP:-5}
+
+# Check if xbacklight is available
+if ! command -v xbacklight &>/dev/null; then
+    echo "Error: xbacklight not found. Please install xorg-xbacklight." >&2
+    exit 1
 fi
+
+get_brightness() {
+    xbacklight -get | cut -d. -f1
+}
+
+increase_brightness() {
+    local -r step=$1
+    xbacklight -inc "$step"
+}
+
+decrease_brightness() {
+    local -r step=$1
+    xbacklight -dec "$step"
+}
+
+notify_brightness() {
+    local brightness
+    brightness=$(get_brightness)
+
+    # Set the icon based on brightness level
+    local icon
+    if ((brightness >= 80)); then
+        icon="brightness-high-symbolic"
+    elif ((brightness >= 40)); then
+        icon="brightness-medium-symbolic"
+    else
+        icon="brightness-low-symbolic"
+    fi
+
+    local text="Brightness: ${brightness}%"
+    notify "$brightness" "$icon" "$text"
+}
+
+# Send the actual notification using either `dunstify` or `notify-send`
+notify() {
+    local percent=$1
+    local icon=$2
+    local text=$3
+    local -a args=(
+        -t 2000
+        -i "$icon"
+    )
+    local -a hints=(
+        string:synchronous:brightness
+        string:x-canonical-private-synchronous:brightness
+        int:value:"$percent"
+        string:image-path:"$icon"
+    )
+
+    # Determine which notification tool to use
+    if $USE_DUNSTIFY; then
+        args+=(-r 1000)
+        hints+=(int:transient:1)
+        read -ra hints <<<"${hints[@]/#/-h }"
+        "${DUNSTIFY_PATH:+${DUNSTIFY_PATH%/}/}dunstify" "${hints[@]}" "${args[@]}" "$text"
+    else
+        read -ra hints <<<"${hints[@]/#/-h }"
+        "${NOTIFY_SEND_PATH:+${NOTIFY_SEND_PATH%/}/}notify-send" "${hints[@]}" "${args[@]}" "$text"
+    fi
+}
+
+# Execute the command based on the user input
+exec_command() {
+    local COMMAND=$1
+    local step=${2:-$DEFAULT_STEP}
+
+    # Validate step is a number
+    if ! [[ "$step" =~ ^[0-9]+$ ]]; then
+        echo "Error: Step value must be a positive number" >&2
+        usage
+    fi
+
+    case "$COMMAND" in
+    increase)
+        increase_brightness "$step"
+        ;;
+    decrease)
+        decrease_brightness "$step"
+        ;;
+    help)
+        usage
+        ;;
+    *)
+        echo "Error: Unknown command '$COMMAND'" >&2
+        usage
+        ;;
+    esac
+}
+
+# Show usage message
+usage() {
+    cat <<-EOF 1>&2
+${COLOR_YELLOW}Usage:${COLOR_RESET} $0 <command> [value]
+Control backlight brightness.
+
+${COLOR_YELLOW}Commands:${COLOR_RESET}
+  ${COLOR_GREEN}increase [value]${COLOR_RESET}      increase brightness (default: $DEFAULT_STEP)
+  ${COLOR_GREEN}decrease [value]${COLOR_RESET}      decrease brightness (default: $DEFAULT_STEP)
+  ${COLOR_GREEN}help${COLOR_RESET}                  display help
+
+${COLOR_YELLOW}Environment Variables:${COLOR_RESET}
+  ${COLOR_GREEN}BRIGHTNESS_STEP${COLOR_RESET}       default step value (default: 5)
+
+${COLOR_YELLOW}Examples:${COLOR_RESET}
+  $0 increase          # Increase by $DEFAULT_STEP%
+  $0 increase 10       # Increase by 10%
+  $0 decrease 5        # Decrease by 5%
+EOF
+    exit "$EX_USAGE"
+}
+
+main() {
+    exec_command "$@" && notify_brightness
+    exit "${EXITCODE:-$EX_OK}"
+}
+
+main "$@"
