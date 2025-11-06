@@ -1,11 +1,87 @@
-#!/bin/sh
+#!/bin/bash
 
-# take all the cache and remove useless packages
-sudo pacman -Sc
-sudo pacman -Scc
-paccache -r
-sudo pacman -Qtdq | sudo pacman -Rns -
+set -euo pipefail
 
-# list cache
-sudo du -sh ~/.cache/
-rm -rf ~/.cache/*
+# Pacman cache cleanup script
+# Cleans package cache and removes orphaned packages
+
+# Colors
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+log_info() {
+    echo -e "${GREEN}[*]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[!]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[x]${NC} $1" >&2
+}
+
+# Check if running as root
+if [ "$EUID" -eq 0 ]; then
+    log_error "Do not run this script as root"
+    exit 1
+fi
+
+# Check required commands
+for cmd in pacman paccache du; do
+    if ! command -v "$cmd" &>/dev/null; then
+        log_error "$cmd is not installed"
+        exit 1
+    fi
+done
+
+echo "This script will:"
+echo "  1. Clean pacman package cache (keep last 3 versions)"
+echo "  2. Remove orphaned packages"
+echo "  3. Show user cache size (optional cleanup)"
+echo ""
+read -rp "Continue? [y/N] " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    log_warn "Aborted"
+    exit 0
+fi
+
+# 1. Clean package cache (keep last 3 versions)
+log_info "Cleaning package cache..."
+sudo paccache -rk3
+sudo paccache -ruk0  # Remove uninstalled packages cache
+
+# 2. Remove orphaned packages
+log_info "Checking for orphaned packages..."
+orphans=$(pacman -Qtdq 2>/dev/null || true)
+if [ -n "$orphans" ]; then
+    echo "Orphaned packages found:"
+    echo "$orphans"
+    read -rp "Remove these packages? [y/N] " confirm_orphans
+    if [[ "$confirm_orphans" =~ ^[Yy]$ ]]; then
+        echo "$orphans" | sudo pacman -Rns -
+        log_info "Orphaned packages removed"
+    else
+        log_warn "Skipped orphaned packages removal"
+    fi
+else
+    log_info "No orphaned packages found"
+fi
+
+# 3. Show user cache size
+log_info "User cache size:"
+du -sh ~/.cache/ 2>/dev/null || log_warn "Cannot access ~/.cache/"
+
+echo ""
+read -rp "Clean user cache? This will remove browser cache, etc. [y/N] " confirm_cache
+if [[ "$confirm_cache" =~ ^[Yy]$ ]]; then
+    log_warn "Cleaning user cache..."
+    rm -rf ~/.cache/*
+    log_info "User cache cleaned"
+else
+    log_warn "Skipped user cache cleanup"
+fi
+
+log_info "Cleanup complete!"
