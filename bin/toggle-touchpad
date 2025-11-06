@@ -1,14 +1,46 @@
-#!/bin/sh
+#!/bin/bash
 
-TOUCHPAD_ID=$(xinput list | grep -oP 'Touchpad.*id=\K\d+')
+set -euo pipefail
+
+# Check required commands
+for cmd in xinput grep dunstify; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd not found" >&2
+        exit 1
+    fi
+done
+
+# Configuration
+dir_icons="/usr/local/bin/icons"
+icon="${dir_icons}/touchpad.svg"
+
+# Fallback to system icon if custom icon not found
+if [ ! -f "$icon" ]; then
+    icon="input-touchpad"
+fi
+
+# Find touchpad ID
+TOUCHPAD_ID=$(xinput list | grep -oP 'Touchpad.*id=\K\d+' | head -1)
+
+if [ -z "$TOUCHPAD_ID" ]; then
+    echo "Error: No touchpad found" >&2
+    dunstify -a "Touchpad" "Error" "No touchpad device found" -u critical -i "$icon"
+    exit 1
+fi
+
+# Get touchpad status
 TOUCHPAD_STATUS=$(xinput list-props "$TOUCHPAD_ID" | grep "Device Enabled" | grep -o "[01]$")
 
-dir_icons="/usr/local/bin/icons"
+if [ -z "$TOUCHPAD_STATUS" ]; then
+    echo "Error: Could not get touchpad status" >&2
+    exit 1
+fi
 
+# Toggle touchpad
 if [ "$TOUCHPAD_STATUS" -eq 1 ]; then
     xinput set-prop "$TOUCHPAD_ID" "Device Enabled" 0
-    dunstify -a "Touchpad" "Touchpad" "Touchpad is disabled" -r 100 -i $dir_icons/touchpad.svg
+    dunstify -a "Touchpad" "Touchpad Disabled" "Touchpad has been disabled" -r 100 -i "$icon"
 else
     xinput set-prop "$TOUCHPAD_ID" "Device Enabled" 1
-    dunstify -a "Touchpad" "Touchpad" "Touchpad is enabled" -r 100 -i $dir_icons/touchpad.svg
+    dunstify -a "Touchpad" "Touchpad Enabled" "Touchpad has been enabled" -r 100 -i "$icon"
 fi
