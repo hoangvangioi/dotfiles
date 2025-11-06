@@ -1,30 +1,239 @@
 #!/bin/bash
 
-dir_icons="/usr/local/bin/icons"
+set -euo pipefail
 
-cur_vol=$(awk -F"[][]" '/Left:/ { print $2 }' <(amixer sget Master) | sed 's/%//g')
+# Volume control and notifications
 
-vol_quiet=33
-vol_loud=66
-
-if [ "$cur_vol" -le "$vol_quiet" ]; then
-    dunstify -a "Speakers" \
-    "Speakers" \
-    "Volume: $cur_vol%" \
-    -r 100 \
-    -i $dir_icons/volume.svg
+# Check required commands
+for cmd in pactl awk grep; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd not found. Please install pulseaudio-utils." >&2
+        exit 1
     fi
-if [ "$cur_vol" -gt "$vol_quiet" ] && [ "$cur_vol" -le "$vol_loud" ]; then
-    dunstify -a "Speakers" \
-    "Speakers" \
-    "Volume: $cur_vol%" \
-    -r 100 \
-    -i $dir_icons/volume-1.svg
+done
+
+# Configuration
+SINK=$(pactl get-default-sink)
+MAX_VOLUME=${MAX_VOLUME:-100}
+SOUND_VOLUME_CHANGED=${SOUND_VOLUME_CHANGED:-/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga}
+
+# Exit codes
+readonly EX_USAGE=64
+readonly EX_UNAVAILABLE=69
+
+# Colors
+COLOR_RESET=$'\033[0m'
+COLOR_RED=$'\033[0;31m'
+COLOR_GREEN=$'\033[0;32m'
+COLOR_YELLOW=$'\033[0;33m'
+
+# Notification icons
+readonly ICONS=(
+    "audio-volume-muted"
+    "audio-volume-low"
+    "audio-volume-medium"
+    "audio-volume-high"
+    "audio-on"
+)
+
+declare -a POST_HOOK_EXEMPT=(
+    "listen"
+)
+
+not_empty() {
+    [[ -n $1 ]]
+}
+
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+error() {
+    echo "$COLOR_RED$*$COLOR_RESET"
+}
+
+is_hookable() { 
+    ! [[ ${POST_HOOK_EXEMPT[*]} =~ $1 ]]; 
+}
+
+max() {
+    (( $1 > $2 )) && echo "$1" || echo "$2"
+}
+
+# Display a notification indicating muted or current volume.
+show_notification() {
+    local -r vol=$(get_volume)
+    local icon summary body=""
+
+    if is_muted; then
+        summary="Volume muted"
+        icon=${ICONS[0]}
+    else
+        summary="Volume ${vol}%"
+        icon=$(get_icon "$vol")
     fi
-if [ "$cur_vol" -gt "$vol_loud" ]; then
-    dunstify -a "Speakers" \
-    "Speakers" \
-    "Volume: $cur_vol%" \
-    -r 100 \
-    -i $dir_icons/volume-2.svg
-fi
+
+    notify "$vol" "$icon" "$summary" "$body"
+}
+
+# Send notification for libnotify-compatible notification daemons.
+notify() {
+    local vol=$1 icon=$2 summary=$3 body=${*:4}
+    local executable="${NOTIFY_PATH:+${NOTIFY_PATH%/}/}dunstify"
+    local hints=(
+        string:synchronous:volume
+        string:x-canonical-private-synchronous:volume
+        int:value:"$vol"
+    )
+
+    command_exists "$executable" || {
+        error "$executable not found. Please install it or set NOTIFY_PATH."
+        exit "$EX_UNAVAILABLE"
+    }
+
+    read -ra hints <<<"${hints[@]/#/-h }"
+    "$executable" -t 1500 -i "$icon" -r 1000 "${hints[@]}" "$summary" "$body" &
+}
+
+# Increase volume relative to current volume.
+increase_volume() {
+    local step=${1:?$(error 'Step is required')}
+    local -r max_volume=$2
+
+    if not_empty "$max_volume"; then
+        local -r vol=$(get_volume)
+
+        if ((vol + step > max_volume)); then
+            # Instead of doing nothing, step to max_volume
+            step=$(max "0" "$((max_volume - vol))")
+        fi
+    fi
+
+    pactl set-sink-volume "$SINK" "+${step}%"
+}
+
+# Decrease volume relative to current volume.
+decrease_volume() {
+    local -r step=${1:?$(error 'Step is required')}
+
+    pactl set-sink-volume "$SINK" "-${step}%"
+}
+
+# Set volume.
+set_volume() {
+    local -r vol=${1:?$(error 'Volume is required')}
+    local -r max_volume=$2
+
+    if not_empty "$max_volume" && ((vol > max_volume)); then
+        return
+    fi
+
+    pactl set-sink-volume "$SINK" "${vol}%"
+}
+
+# Toggle mute.
+toggle_mute() {
+    pactl set-sink-mute "$SINK" toggle
+}
+
+usage() {
+    cat <<-EOF 1>&2
+${COLOR_YELLOW}Usage:${COLOR_RESET} $0 <command> [value]
+Control volume and related notifications.
+
+${COLOR_YELLOW}Commands:${COLOR_RESET}
+    ${COLOR_GREEN}up <value>${COLOR_RESET}                  Increase volume by <value>%
+    ${COLOR_GREEN}down <value>${COLOR_RESET}                Decrease volume by <value>%
+    ${COLOR_GREEN}set <value>${COLOR_RESET}                 Set volume to <value>%
+    ${COLOR_GREEN}mute${COLOR_RESET}                        Toggle mute
+    ${COLOR_GREEN}listen${COLOR_RESET}                      Listen for volume changes
+    ${COLOR_GREEN}help${COLOR_RESET}                        Display this help
+
+${COLOR_YELLOW}Environment Variables:${COLOR_RESET}
+    ${COLOR_GREEN}MAX_VOLUME${COLOR_RESET}                  Maximum volume limit (default: 100)
+    ${COLOR_GREEN}NOTIFY_PATH${COLOR_RESET}                 Path to dunstify executable
+    ${COLOR_GREEN}SOUND_VOLUME_CHANGED${COLOR_RESET}        Sound file to play on change
+
+${COLOR_YELLOW}Examples:${COLOR_RESET}
+    $0 up 5                       # Increase volume by 5%
+    $0 down 10                    # Decrease volume by 10%
+    $0 set 50                     # Set volume to 50%
+    $0 mute                       # Toggle mute
+    MAX_VOLUME=150 $0 up 10       # Allow volume up to 150%
+
+EOF
+    exit "$EX_USAGE"
+}
+
+# Get the volume as a percentage.
+get_volume() {
+    pactl get-sink-volume "$SINK" | awk '/^Volume: / {gsub("%", ""); print $5; exit}'
+}
+
+# Check if sink is muted.
+is_muted() {
+    pactl list sinks | awk -v sink="$SINK" '/^\s+Name: / {insink = ($2 == sink)} /^\s+Mute: / && insink {print $2; exit}' | grep -q yes
+}
+
+# Gets an icon for the provided volume.
+get_icon() {
+    local vol=$1
+    case $vol in
+    9[0-9] | 100) echo "${ICONS[4]:-${ICONS[3]}}" ;;
+    7[0-9] | 8[0-9]) echo "${ICONS[3]}" ;;
+    3[0-9] | [4-6][0-9]) echo "${ICONS[2]}" ;;
+    [1-2][0-9]) echo "${ICONS[1]}" ;;
+    *) echo "${ICONS[0]}" ;;
+    esac
+}
+
+# Listens for PulseAudio events
+listen() {
+    pactl subscribe | grep --line-buffered "Event 'change' on sink #$(pactl list sinks short | awk -v s="$SINK" '$2==s {print $1}')" | while read -r; do
+        show_notification
+    done
+}
+
+exec_command() {
+    COMMAND=${1:?$(error 'A command is required')}
+    shift
+
+    case "$COMMAND" in
+    up)
+        increase_volume "$1" "$MAX_VOLUME"
+        ;;
+    down)
+        decrease_volume "$1"
+        ;;
+    set)
+        set_volume "$1" "$MAX_VOLUME"
+        ;;
+    mute)
+        toggle_mute
+        ;;
+    listen)
+        listen "$*"
+        ;;
+    *)
+        usage
+        ;;
+    esac
+}
+
+# Play a sound file.
+play_sound() {
+    command_exists paplay && paplay -d "$SINK" "$SOUND_VOLUME_CHANGED" &
+}
+
+main() {
+    [[ $# -eq 0 ]] && usage
+
+    exec_command "$1" "${2:-}"
+
+    if is_hookable "$1"; then
+        show_notification
+        play_sound
+    fi
+}
+
+main "$@"
