@@ -1,33 +1,151 @@
-#!/bin/sh
+#!/bin/bash
 
-for pid in $(pidof -x battery); do
+set -euo pipefail
+
+# Check if dunstify is available for notifications
+if ! command -v dunstify &>/dev/null; then
+    echo "dunstify could not be found, notifications will not work."
+    exit 1
+fi
+
+# Kill existing battery scripts (except this one)
+for pid in $(pidof -x "$0"); do
     if [ "$pid" != $$ ]; then
         kill -9 "$pid"
     fi
 done
 
-dir_icons="/usr/local/bin/icons"
+# Set warning and critical levels
+warning_level=${BATTERY_WARNING_LEVEL:-20}
+critical_level=${BATTERY_CRITICAL_LEVEL:-10}
+check_interval=${BATTERY_CHECK_INTERVAL:-2}
 
-# notify when below this percentage
-warning_level=20
+# Initialize previous state
+previous_state=""
+notified_full=false
+notified_warning=false
+notified_critical=false
 
-# how often to check battery status, in seconds
-check_interval=60
+# Send notification
+notify() {
+    local title="$1"
+    local summary="$2"
+    local urgency="$3"
+    local icon="$4"
+    local hint="int:value:$5"
+    dunstify -a "Battery" "$title" "$summary" -h "$hint" -i "$icon" -u "$urgency"
+}
 
-while true; do
-    path_to_battery=$(upower -e | grep BAT)
-    battery_level=$(upower -i "$path_to_battery" | grep -E "percentage" | sed 's/[^0-9]//g')
-    discharging=$(upower -i "$path_to_battery" | grep -E "state" | grep -c "discharging")
-    time_to_empty=$(upower -i "$path_to_battery" | grep -E "time to empty" | sed 's/[^0-9,.]//g')
+# Get battery icon based on level
+get_battery_icon() {
+    local level="$1"
+    local level_rounded=$((level / 10 * 10))
 
-    # check if battery is low and discharging
-    if [ "$battery_level" -lt "$warning_level" ] && [ "$discharging" -eq 1 ]; then
-        dunstify -a "Battery" \
-            "Low battery: ${battery_level}%" \
-            "Battery is low ($time_to_empty minutes left)" \
-            -r 100 \
-            -i $dir_icons/battery.svg
+    # Ensure battery level is within range 0-100
+    if [ "$level_rounded" -gt 100 ]; then
+        level_rounded=100
+    elif [ "$level_rounded" -lt 0 ]; then
+        level_rounded=0
     fi
 
-    sleep ${check_interval}s
+    echo "battery-$(printf "%03d" "$level_rounded")"
+}
+
+# Generate battery notification
+send_notification() {
+    local state="$1"
+    local level="$2"
+    local status_type="$3"
+
+    local icon
+    local urgency="normal"
+    local title="Battery Status"
+    local summary="Battery is at $level%"
+
+    icon=$(get_battery_icon "$level")
+
+    if [ "$status_type" == "charging" ]; then
+        icon="${icon}-charging"
+        if [ "$level" -eq 100 ]; then
+            title="Battery Full"
+            summary="Battery is fully charged."
+            urgency="normal"
+        fi
+    elif [ "$status_type" == "discharging" ]; then
+        if [ "$level" -lt "$critical_level" ]; then
+            title="Battery Critical"
+            summary="Battery is critically low at $level%. Please charge immediately!"
+            urgency="critical"
+        elif [ "$level" -lt "$warning_level" ]; then
+            title="Battery Low"
+            summary="Battery is low at $level%. Please charge soon."
+            urgency="critical"
+        fi
+    fi
+
+    notify "$title" "$summary" "$urgency" "$icon" "$level"
+}
+
+# Get battery path
+path_to_battery=$(upower -e | grep BAT)
+
+if [ -z "$path_to_battery" ]; then
+    notify "Battery Not Found" "Unable to detect battery status." "critical" "battery-missing" 0
+    exit 1
+fi
+
+while true; do
+    # Get battery info
+    battery_info=$(upower -i "$path_to_battery")
+    battery_level=$(echo "$battery_info" | grep -oP 'percentage:\s*\K\d+')
+    state=$(echo "$battery_info" | grep -oP "state:\s*\K\w+")
+
+    # Check for invalid battery info
+    if [ -z "$battery_level" ] || [ -z "$state" ]; then
+        notify "Error" "Unable to fetch valid battery information." "critical" "battery-error" 0
+        sleep "$check_interval"
+        continue
+    fi
+
+    # Send notification when charging or fully charged
+    if [ "$state" == "charging" ]; then
+        if [ "$battery_level" -eq 100 ] && [ "$notified_full" == "false" ]; then
+            send_notification "charging" 100 "charging"
+            notified_full=true
+        elif [ "$battery_level" -lt 100 ]; then
+            notified_full=false
+        fi
+        # Reset discharge notifications when charging
+        notified_warning=false
+        notified_critical=false
+    fi
+
+    # Send notification when discharging
+    if [ "$state" == "discharging" ]; then
+        if [ "$battery_level" -le "$critical_level" ] && [ "$notified_critical" == "false" ]; then
+            send_notification "discharging" "$battery_level" "discharging"
+            notified_critical=true
+            notified_warning=true  # Also mark warning as notified
+        elif [ "$battery_level" -le "$warning_level" ] && [ "$notified_warning" == "false" ]; then
+            send_notification "discharging" "$battery_level" "discharging"
+            notified_warning=true
+        elif [ "$battery_level" -gt "$warning_level" ]; then
+            # Reset notifications when battery level increases
+            notified_warning=false
+            notified_critical=false
+        fi
+        # Reset full notification when discharging
+        notified_full=false
+    fi
+
+    # Check for state change (charging <-> discharging)
+    if [ "$state" != "$previous_state" ] && [ -n "$previous_state" ]; then
+        send_notification "$state" "$battery_level" "$state"
+    fi
+
+    # Update previous state
+    previous_state="$state"
+
+    # Sleep before checking again
+    sleep "$check_interval"
 done
