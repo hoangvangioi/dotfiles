@@ -1,58 +1,99 @@
-#!/bin/sh
+#!/bin/bash
 
-# Ensure the screenshots directory exists
-SCREENSHOTS_DIR="$HOME/Pictures/screenshots"
+set -euo pipefail
+
+# Check required commands
+for cmd in maim xclip dunstify; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd not found. Please install it." >&2
+        exit 1
+    fi
+done
+
+# Configuration
+SCREENSHOTS_DIR="${SCREENSHOTS_DIR:-$HOME/Pictures/screenshots}"
 mkdir -p "$SCREENSHOTS_DIR"
 
 # Function to take a screenshot
 screenshot() {
-    mode="$1"
-    filename_prefix="$2"
+    local mode="$1"
+    local filename_prefix="$2"
+    local filename
     filename="$SCREENSHOTS_DIR/screenshot-$(date -u +'%Y%m%d-%H%M%SZ')-$filename_prefix.png"
 
-    # Ensure `maim` and `xclip` are installed
-    if ! command -v maim > /dev/null 2>&1 || ! command -v xclip > /dev/null 2>&1; then
-        echo "Error: 'maim' and 'xclip' are required but not installed." >&2
-        exit 1
-    fi
-
     # Take the screenshot and save it
-    # shellcheck disable=SC3001
-    # shellcheck disable=SC2086
-    maim --format=png $mode | tee >(xclip -selection clipboard -t image/png) >(cat > "$filename")
+    if [ -n "$mode" ]; then
+        # shellcheck disable=SC2086
+        maim --format=png $mode | tee >(xclip -selection clipboard -t image/png) > "$filename"
+    else
+        maim --format=png | tee >(xclip -selection clipboard -t image/png) > "$filename"
+    fi
     
     # Notify the user
     dunstify -a "Screenshot" \
              -i "$filename" \
              -t 5000 \
              "Screenshot Saved" \
-             "Your screenshot has been saved as: $filename" \
+             "Saved to: $(basename "$filename")" \
              -r 100
+    
+    echo "Screenshot saved: $filename"
 }
 
 # Show usage information
 usage() {
-    echo "Usage: $0 {all|window|select}" >&2
+    cat <<-EOF >&2
+Usage: $0 <mode>
+
+Take a screenshot and save it to $SCREENSHOTS_DIR
+The screenshot is also copied to clipboard.
+
+Modes:
+  all       Capture entire screen
+  window    Capture active window (requires xdotool)
+  select    Interactively select area to capture
+
+Environment Variables:
+  SCREENSHOTS_DIR    Directory to save screenshots (default: ~/Pictures/screenshots)
+
+Examples:
+  $0 all             # Capture full screen
+  $0 window          # Capture active window
+  $0 select          # Select area with mouse
+
+Keybindings (suggested for i3):
+  bindsym Print exec --no-startup-id $0 all
+  bindsym Shift+Print exec --no-startup-id $0 window
+  bindsym Control+Print exec --no-startup-id $0 select
+EOF
     exit 1
 }
 
 # Main script logic
+if [ $# -eq 0 ]; then
+    usage
+fi
+
 case "$1" in
     all)
         screenshot "" "all"
         ;;
     window)
-        if command -v xdotool > /dev/null 2>&1; then
+        if command -v xdotool &>/dev/null; then
             screenshot "--window $(xdotool getactivewindow)" "current"
         else
-            echo "Error: 'xdotool' is required but not installed." >&2
+            echo "Error: xdotool is required for window mode. Please install it." >&2
             exit 1
         fi
         ;;
     select)
         screenshot "--select" "selected"
         ;;
+    help|--help|-h)
+        usage
+        ;;
     *)
+        echo "Error: Unknown mode '$1'" >&2
         usage
         ;;
 esac
