@@ -1,153 +1,169 @@
-@import "font.rasi"
-@import "colors.rasi"
-
+/*****----- Configuration -----*****/
 configuration {
-    show-icons:                     false;
-    display-drun: 					"";
-    drun-display-format:            "{icon} {name}";
-    disable-history:                false;
-	click-to-exit: 					true;
+    show-icons:                 false;
 }
 
+/*****----- Colors -----*****/
+* {
+    background:     #1E1F29FF;
+    background-alt: #282A36FF;
+    foreground:     #FFFFFFFF;
+    selected:       #BD93F9FF;
+    active:         #50FA7BFF;
+    urgent:         #FF5555FF;
+}
+
+/*****----- Fonts -----*****/
+* {
+    font: "JetBrains Mono Nerd Font 10";
+}
+
+/*****----- Main Window -----*****/
 window {
-    transparency:                   "real";
-    background-color:               @background;
-    text-color:                     @foreground;
-    border:                  		1px;
-    border-color:                  	@selected;
-    border-radius:                  0px;
-    width:                          450px;
-    location:                       center;
-    anchor:                         center;
-    x-offset:                       0;
-    y-offset:                       0;
+    /* properties for window widget */
+    transparency:                "real";
+    location:                    center;
+    anchor:                      center;
+    fullscreen:                  false;
+    width:                       605px;
+    x-offset:                    0px;
+    y-offset:                    0px;
+
+    /* properties for all widgets */
+    enabled:                     true;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      0px solid;
+    border-radius:               4px;
+    border-color:                @selected;
+    cursor:                      "default";
+    background-color:            @background;
 }
 
-prompt {
-    enabled: 						true;
-	margin: 						0px 0px 0px 8px;
-    padding:    					6px 0px 6px 0px;
-	background-color: 				@background;
-	text-color: 					@foreground;
-    border:                  		0px 0px 0px 0px;
-    border-color:                  	@selected;
-    border-radius:                  0px;
+/*****----- Main Box -----*****/
+mainbox {
+    enabled:                     true;
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     20px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @selected;
+    background-color:            transparent;
+    children:                    [ "inputbar", "message", "listview" ];
+}
+
+/*****----- Inputbar -----*****/
+inputbar {
+    enabled:                     true;
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      0px;
+    border-radius:               0px;
+    border-color:                @selected;
+    background-color:            transparent;
+    text-color:                  @foreground;
+    children:                    [ "textbox-prompt-colon", dummy, "prompt"];
+}
+
+dummy {
+    background-color:            transparent;
 }
 
 textbox-prompt-colon {
-	expand: 						false;
-	str: 							"";
-    border-radius:                  0px;
-    background-color:               @selected;
-    text-color:                     @background;
-    padding:    					6px 13px 6px 10px;
-    font:                           "JetBrainsMono NL Nerd Font 10";
+    enabled:                     true;
+    expand:                      false;
+    str:                         "";
+    padding:                     10px 13px 10px 10px;
+    border-radius:               4px;
+    background-color:            @urgent;
+    text-color:                  @background;
+}
+prompt {
+    enabled:                     true;
+    padding:                     10px;
+    border-radius:               4px;
+    background-color:            @active;
+    text-color:                  @background;
 }
 
-entry {
-    background-color:               @background;
-    text-color:                     @background;
-    placeholder-color:              @background;
-    placeholder:                    "";
-    expand:                         true;
-    horizontal-align:               0;
-    blink:                          false;
-    padding:                        6px;
+/*****----- Message -----*****/
+message {
+    enabled:                     true;
+    margin:                      0px;
+    padding:                     10px;
+    border:                      0px solid;
+    border-radius:               4px;
+    border-color:                @selected;
+    background-color:            @background-alt;
+    text-color:                  @foreground;
+}
+textbox {
+    background-color:            inherit;
+    text-color:                  inherit;
+    vertical-align:              0.5;
+    horizontal-align:            0.5;
+    placeholder-color:           @foreground;
+    blink:                       true;
+    markup:                      true;
+}
+error-message {
+    padding:                     10px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @selected;
+    background-color:            @background;
+    text-color:                  @foreground;
 }
 
-inputbar {
-	children: 						[ textbox-prompt-colon, prompt ];
-    spacing:                        0;
-    background-color:               @background;
-    text-color:                     @foreground;
-    border:                  		0px 0px 1px 0px;
-    border-radius:                  0px;
-    border-color:                  	@selected;
-    expand:                         false;
-    margin:                         0px 0px 0px 0px;
-    padding:                        0px;
-    position:                       center;
-}
-
-case-indicator {
-    background-color:               @background;
-    text-color:                     @foreground;
-    spacing:                        0;
-}
-
-
+/*****----- Listview -----*****/
 listview {
-    background-color:               @background;
-    columns:                        1;
-    lines:							6;
-    spacing:                        10px;
-    cycle:                          true;
-    dynamic:                        true;
-    layout:                         horizontal;
+    enabled:                     true;
+    columns:                     5;
+    lines:                       1;
+    cycle:                       true;
+    dynamic:                     true;
+    scrollbar:                   false;
+    layout:                      vertical;
+    reverse:                     false;
+    fixed-height:                true;
+    fixed-columns:               true;
+    
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @selected;
+    background-color:            transparent;
+    text-color:                  @foreground;
+    cursor:                      "default";
 }
 
-mainbox {
-    background-color:               @background;
-    children:                       [ inputbar, listview ];
-    spacing:                       	10px;
-    padding:                        10px;
-}
-
+/*****----- Elements -----*****/
 element {
-    background-color:               @background;
-    text-color:                     @foreground;
-    orientation:                    horizontal;
-    border:                  		1px;
-    border-radius:                  0px;
-    border-color:                  	@selected;
-    padding:                        23.5px 25px 23.5px 25px;
+    enabled:                     true;
+    spacing:                     0px;
+    margin:                      0px;
+    padding:                     10px;
+    border:                      0px solid;
+    border-radius:               4px;
+    border-color:                @selected;
+    background-color:            @background-alt;
+    text-color:                  @foreground;
+    cursor:                      pointer;
 }
-
-element-icon {
-    background-color: 				inherit;
-    text-color:       				inherit;
-    horizontal-align:               0.5;
-    vertical-align:                 0.5;
-    size:                           0px;
-    border:                         0px;
-}
-
 element-text {
-    background-color: 				inherit;
-    text-color:       				inherit;
-    font:                           "JetBrainsMono NL Nerd Font 14";
-    expand:                         true;
-    horizontal-align:               0.5;
-    vertical-align:                 0.5;
-    margin:                         0px 0px 0px 0px;
+    background-color:            transparent;
+    text-color:                  inherit;
+    cursor:                      inherit;
+    vertical-align:              0.5;
+    horizontal-align:            0.5;
 }
-
-element selected {
-    background-color:               @selected;
-    text-color:                     @background;
-    border:                  		0px;
-    border-radius:                  0px;
-    border-color:                  	@selected;
-}
-
-element.active,
-element.selected.urgent {
-  background-color: @selector;
-  text-color: @background;
-  border-color: @selector;
-}
-
-element.selected.urgent {
-  border-color: @selected;
-}
-
-element.urgent,
-element.selected.active {
-  background-color: @off;
-  text-color: @background;
-  border-color: @off;
-}
-
-element.selected.active {
-  border-color: @selected;
+element selected.normal {
+    border:                      0px 2px 0px 2px;
+    border-radius:               4px;
+    background-color:            var(selected);
+    text-color:                  var(background);
 }
