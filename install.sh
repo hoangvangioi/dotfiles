@@ -132,6 +132,7 @@ copy_files() {
     fi
     
     if [ -d "./bin" ]; then
+        sudo mkdir -p "$SCRIPTS_DIR"
         sudo cp -r ./bin/* "$SCRIPTS_DIR"
         sudo chmod +x "$SCRIPTS_DIR"/*
         log_info "Scripts copied and made executable."
