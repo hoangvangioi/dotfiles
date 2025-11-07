@@ -1,21 +1,55 @@
-#!/bin/bash
-
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Define variables
-CONFIG_DIR="$HOME/.config"
-SCRIPTS_DIR="/usr/local/bin"
+readonly CONFIG_DIR="$HOME/.config"
+readonly SCRIPTS_DIR="/usr/local/bin"
 DATE=$(date +%s)
+readonly DATE
+TEMP_DIR=$(mktemp -d)
+readonly TEMP_DIR
 
-GREEN='\033[0;32m'
-NO_COLOR='\033[0m'
+# Colors
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly RED='\033[0;31m'
+readonly NO_COLOR='\033[0m'
+
+# Logging functions
+log_info() {
+    echo -e "${GREEN}[*] $1${NO_COLOR}"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[!] $1${NO_COLOR}"
+}
+
+log_error() {
+    echo -e "${RED}[✗] $1${NO_COLOR}" >&2
+}
+
+# Cleanup on exit
+cleanup() {
+    [ -d "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
+}
+trap cleanup EXIT
+
+# Refresh sudo timestamp
+refresh_sudo() {
+    while true; do
+        sudo -v
+        sleep 50
+    done &
+    SUDO_PID=$!
+    trap 'kill $SUDO_PID 2>/dev/null; cleanup' EXIT
+}
 
 # Install dialog if not already installed
 sudo pacman -S --noconfirm --needed dialog
 
 # Function to update the system
 system_update() {
-    echo -e "${GREEN}[*] Updating system...${NO_COLOR}"
+    log_info "Updating system..."
     sudo pacman -Sy --noconfirm archlinux-keyring
     sudo pacman -Syu --noconfirm
     sudo pacman -S --noconfirm --needed base-devel wget git curl
@@ -24,21 +58,22 @@ system_update() {
 # Function to install yay
 install_yay() {
     if ! command -v yay &>/dev/null; then
-        echo -e "${GREEN}[*] Installing yay...${NO_COLOR}"
-        git clone "https://aur.archlinux.org/yay.git" "$HOME/.srcs/yay"
-        (cd "$HOME/.srcs/yay" && makepkg -si --noconfirm)
+        log_info "Installing yay..."
+        local yay_dir="$TEMP_DIR/yay"
+        git clone "https://aur.archlinux.org/yay.git" "$yay_dir"
+        (cd "$yay_dir" && makepkg -si --noconfirm)
     else
-        echo -e "${GREEN}[*] yay is already installed.${NO_COLOR}"
+        log_info "yay is already installed."
     fi
 }
 
 # Function to install basic packages
 install_pkgs() {
-    echo -e "${GREEN}[*] Installing packages with pacman...${NO_COLOR}"
+    log_info "Installing packages with pacman..."
     sudo pacman -S --noconfirm --needed \
         acpi alsa-utils base-devel curl git \
         pulseaudio pulseaudio-alsa xorg xorg-xinit alacritty \
-        btop dunst feh firefox i3-wm libnotify nemo neofetch \
+        btop dunst feh firefox i3-wm libnotify nemo \
         bc xf86-video-intel bluez bluez-utils pulseaudio-bluetooth \
         bluez-libs openvpn networkmanager-openvpn networkmanager \
         network-manager-applet
@@ -46,131 +81,202 @@ install_pkgs() {
 
 # Function to install AUR packages
 install_aur_pkgs() {
-    echo -e "${GREEN}[*] Installing packages with yay...${NO_COLOR}"
+    log_info "Installing packages with yay..."
     yay -S --noconfirm --needed \
         i3lock i3-resurrect ffcast dhcpcd iwd ntfs-3g \
         ntp pulsemixer vnstat light upower maim redshift \
         spotify playerctl ttf-jetbrains-mono-nerd neovim \
         polybar ranger rofi zathura zathura-pdf-mupdf \
-        visual-studio-code-bin papirus-icon-theme
+        visual-studio-code-bin papirus-icon-theme neofetch
 
-    echo -e "${GREEN}[*] Installing i3lock-color...${NO_COLOR}"
-    git clone https://github.com/Raymo111/i3lock-color.git
-    (cd i3lock-color && ./install-i3lock-color.sh)
-    rm -rf i3lock-color
+    log_info "Installing i3lock-color..."
+    local i3lock_dir="$TEMP_DIR/i3lock-color"
+    git clone https://github.com/Raymo111/i3lock-color.git "$i3lock_dir"
+    (cd "$i3lock_dir" && ./install-i3lock-color.sh)
 }
 
 # Function to create backups of existing configurations
 create_backup() {
-    echo -e "${GREEN}[*] Creating backup of existing configs...${NO_COLOR}"
-    for dir in alacritty btop Code dunst gtk-3.0 i3 neofetch nvim polybar ranger rofi zathura; do
+    log_info "Creating backup of existing configs..."
+    local dirs=(alacritty btop Code dunst gtk-3.0 i3 neofetch nvim polybar ranger rofi zathura)
+    
+    for dir in "${dirs[@]}"; do
         if [ -d "$CONFIG_DIR/$dir" ]; then
             mv "$CONFIG_DIR/$dir" "$CONFIG_DIR/${dir}_$DATE"
-            echo "$dir configs backed up."
+            log_info "$dir configs backed up."
         fi
     done
 
     if [ -d "$SCRIPTS_DIR" ]; then
-        # shellcheck disable=SC2153
-        sudo mv "$SCRIPTS_DIR" "$SCRIPTS_DIR_$DATE"
-        echo "Scripts directory backed up."
+        sudo mv "$SCRIPTS_DIR" "${SCRIPTS_DIR}_$DATE"
+        log_info "Scripts directory backed up."
     fi
 }
 
 # Function to create default directories
 create_default_directories() {
-    echo -e "${GREEN}[*] Creating default directories...${NO_COLOR}"
+    log_info "Creating default directories..."
     mkdir -p "$HOME/.config" "$HOME/Pictures/wallpapers"
     sudo mkdir -p /usr/local/bin /usr/share/themes
 }
 
 # Function to copy configuration and script files
 copy_files() {
-    echo -e "${GREEN}[*] Copying files...${NO_COLOR}"
-    [ -d "./config" ] && cp -r ./config/* "$CONFIG_DIR"
+    log_info "Copying files..."
+    
+    if [ -d "./config" ]; then
+        cp -r ./config/* "$CONFIG_DIR"
+        log_info "Config files copied."
+    else
+        log_warn "Config directory not found, skipping."
+    fi
+    
     if [ -d "./bin" ]; then
         sudo cp -r ./bin/* "$SCRIPTS_DIR"
         sudo chmod +x "$SCRIPTS_DIR"/*
+        log_info "Scripts copied and made executable."
+    else
+        log_warn "Bin directory not found, skipping."
     fi
-    [ -d "./wallpapers" ] && cp -r ./wallpapers/* "$HOME/Pictures/wallpapers"
+    
+    if [ -d "./wallpapers" ]; then
+        cp -r ./wallpapers/* "$HOME/Pictures/wallpapers"
+        log_info "Wallpapers copied."
+    else
+        log_warn "Wallpapers directory not found, skipping."
+    fi
+    
+    # Copy dotfiles
+    [ -f "./.zshrc" ] && cp ./.zshrc ~/ && log_info ".zshrc copied."
+    [ -f "./.xprofile" ] && cp ./.xprofile ~/ && log_info ".xprofile copied."
 }
 
 # Function to install GTK theme
 install_gtk_theme() {
-    echo -e "${GREEN}[*] Installing GTK theme...${NO_COLOR}"
+    log_info "Installing GTK theme..."
     yay -S --noconfirm --needed bibata-cursor-theme-bin
+    
+    local theme_dir="$TEMP_DIR/sweet-theme"
+    mkdir -p "$theme_dir"
+    cd "$theme_dir" || return 1
+    
     wget -q https://github.com/EliverLara/Sweet/releases/download/v5.0/Sweet-Dark-v40.tar.xz
-    tar xvf Sweet-Dark-v40.tar.xz
+    tar xf Sweet-Dark-v40.tar.xz
     sudo mkdir -p /usr/share/themes/Sweet-Dark-v40
     sudo cp -r ./Sweet-Dark-v40/{assets,gtk-3.0,gtk-4.0,index.theme} /usr/share/themes/Sweet-Dark-v40
-    rm -rf ./Sweet-Dark-v40*
-    echo -e "${GREEN}[*] Installation complete.${NO_COLOR}"
+    
+    cd - >/dev/null || return 1
+    log_info "GTK theme installed successfully."
+}
+
+# Helper function to clone git repo if not exists
+git_clone_if_not_exists() {
+    local repo_url="$1"
+    local target_dir="$2"
+    
+    if [ ! -d "$target_dir" ]; then
+        git clone "$repo_url" "$target_dir"
+    else
+        log_warn "$(basename "$target_dir") already exists, skipping."
+    fi
 }
 
 # Function to install Zsh and plugins
 install_zsh() {
-    echo -e "${GREEN}[*] Installing zsh and oh-my-zsh...${NO_COLOR}"
+    log_info "Installing zsh and oh-my-zsh..."
     yay -S --noconfirm --needed zsh
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-autosuggestions
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-syntax-highlighting
-    git clone https://github.com/MichaelAquilina/zsh-you-should-use.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/you-should-use
-    git clone https://github.com/fdellwing/zsh-bat.git "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}"/plugins/zsh-bat
-    cp ./.zshrc ~/
-    echo -e "${GREEN}[*] Setting Zsh as default shell...${NO_COLOR}"
-    chsh -s "$(which zsh)"
-    sudo chsh -s "$(which zsh)"
+    
+    # Install oh-my-zsh if not already installed
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    else
+        log_warn "oh-my-zsh already installed, skipping."
+    fi
+    
+    # Install plugins
+    local custom_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+    git_clone_if_not_exists "https://github.com/zsh-users/zsh-autosuggestions" "$custom_dir/plugins/zsh-autosuggestions"
+    git_clone_if_not_exists "https://github.com/zsh-users/zsh-syntax-highlighting.git" "$custom_dir/plugins/zsh-syntax-highlighting"
+    git_clone_if_not_exists "https://github.com/MichaelAquilina/zsh-you-should-use.git" "$custom_dir/plugins/you-should-use"
+    git_clone_if_not_exists "https://github.com/fdellwing/zsh-bat.git" "$custom_dir/plugins/zsh-bat"
+    
+    # Set Zsh as default shell
+    log_info "Setting Zsh as default shell..."
+    local zsh_path
+    zsh_path="$(command -v zsh)"
+    chsh -s "$zsh_path"
+    sudo chsh -s "$zsh_path"
 }
 
 # Function to install Ibus Bamboo
 install_ibus_bamboo() {
-    echo -e "${GREEN}[*] Installing ibus-bamboo...${NO_COLOR}"
+    log_info "Installing ibus-bamboo..."
     yay -S --noconfirm --needed ibus ibus-bamboo-git
-    dconf load /desktop/ibus/ <"$HOME/.config/ibus/ibus.dconf"
-    sudo tee -a /etc/profile <<END
-
-# Ibus bamboo
-export GTK_IM_MODULE=ibus
-export QT_IM_MODULE=ibus
-export XMODIFIERS=@im=ibus
-export QT4_IM_MODULE=ibus
-export CLUTTER_IM_MODULE=ibus
-export GLFW_IM_MODULE=ibus
-
-if ! pgrep -x "ibus-daemon" > /dev/null; then
-    ibus-daemon -drx > /var/log/ibus-daemon.log 2>&1 &
-fi
-END
+    
+    # Load ibus config if exists
+    if [ -f "$HOME/.config/ibus/ibus.dconf" ]; then
+        if command -v dconf &>/dev/null; then
+            dconf load /desktop/ibus/ <"$HOME/.config/ibus/ibus.dconf"
+            log_info "IBus config loaded."
+        else
+            log_warn "dconf command not found, skipping config load."
+        fi
+    else
+        log_warn "ibus.dconf not found, skipping dconf load."
+    fi
 }
 
 # Function to install VSCode extensions
 install_vsc() {
-    echo -e "${GREEN}[*] Installing VSCode extensions...${NO_COLOR}"
-    code --install-extension zhuangtongfa.Material-theme
-    code --install-extension dracula-theme.theme-dracula
-    code --install-extension pkief.material-icon-theme
-    code --install-extension visualstudioexptteam.intellicode-api-usage-examples
-    code --install-extension visualstudioexptteam.vscodeintellicode
+    if ! command -v code &>/dev/null; then
+        log_error "VSCode is not installed. Install it first."
+        return 1
+    fi
+    
+    log_info "Installing VSCode extensions..."
+    local extensions=(
+        "zhuangtongfa.Material-theme"
+        "dracula-theme.theme-dracula"
+        "pkief.material-icon-theme"
+        "visualstudioexptteam.intellicode-api-usage-examples"
+        "visualstudioexptteam.vscodeintellicode"
+    )
+    
+    for ext in "${extensions[@]}"; do
+        code --install-extension "$ext"
+    done
+    log_info "VSCode extensions installed."
 }
 
 # Function to install SDDM theme
 install_sddm() {
-    echo -e "${GREEN}[*] Installing SDDM theme...${NO_COLOR}"
+    log_info "Installing SDDM theme..."
     yay -S --noconfirm --needed qt6-5compat qt6-declarative qt6-svg sddm
-    sudo systemctl enable sddm.service
-    sudo cp -r sddm-arch-theme /usr/share/sddm/themes
-    echo "[Theme]
-Current=sddm-arch-theme" | sudo tee /etc/sddm.conf
+    
+    if command -v systemctl &>/dev/null; then
+        sudo systemctl enable sddm.service
+        log_info "SDDM service enabled."
+    else
+        log_warn "systemctl not found, skipping service enable."
+    fi
+    
+    if [ -d "sddm-arch-theme" ]; then
+        sudo cp -r sddm-arch-theme /usr/share/sddm/themes
+        echo "[Theme]
+Current=sddm-arch-theme" | sudo tee /etc/sddm.conf >/dev/null
+        log_info "SDDM theme installed."
+    else
+        log_warn "sddm-arch-theme directory not found, skipping."
+    fi
 }
 
-# Function to install SDDM theme
+# Function to install Grub Bootloader theme
 install_grub_theme() {
-    echo -e "${GREEN}[*] Installing Grub Bootloader theme...${NO_COLOR}"
-    git clone https://github.com/hoangvangioi/arch-grub-theme.git
-    cd arch-grub-theme
-    ./install.sh
-    cd ..
-    rm -rf arch-grub-theme
+    log_info "Installing Grub Bootloader theme..."
+    local grub_dir="$TEMP_DIR/arch-grub-theme"
+    git clone https://github.com/hoangvangioi/arch-grub-theme.git "$grub_dir"
+    (cd "$grub_dir" && ./install.sh)
+    log_info "Grub theme installed."
 }
 
 # Display dialog to select tasks
@@ -216,4 +322,5 @@ for choice in $choices; do
     esac
 done
 
-echo -e "${GREEN}[*] Setup complete.${NO_COLOR}"
+log_info "Setup complete!"
+log_info "Please reboot your system to apply all changes."
