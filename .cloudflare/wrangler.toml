@@ -1,0 +1,10 @@
+name = "dotfiles-gateway"
+main = "build/index.js"
+compatibility_date = "2026-05-30"
+
+[build]
+command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
+
+[[routes]]
+pattern = "arch.hoangvangioi.com"
+custom_domain = true

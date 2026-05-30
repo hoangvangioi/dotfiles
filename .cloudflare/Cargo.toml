@@ -1,5 +1,5 @@
 [package]
-name = "hellow"
+name = "dotfiles-gateway"
 version = "0.1.0"
 edition = "2021"
 authors = ["Hoang Van Gioi <gioitube2k2@gmail.com>"]
@@ -8,5 +8,5 @@ authors = ["Hoang Van Gioi <gioitube2k2@gmail.com>"]
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = { version = "0.6" }
-worker-macros = { version = "0.6" }
+worker = { version = "0.8" }
+worker-macros = { version = "0.8" }

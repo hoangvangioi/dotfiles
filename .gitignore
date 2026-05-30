@@ -1,13 +1,8 @@
-# Build artifacts
-dist/
-
-# Rust/Cargo
-worker/target/
-Cargo.lock
-
-# Node.js
+# Ignore Rust build artifacts
+target
+.wrangler
+build
 node_modules/
-package-lock.json
 
 # Editor
 .vscode/

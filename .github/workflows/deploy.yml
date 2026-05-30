@@ -1,43 +1,42 @@
-name: Deploy Cloudflare Rust Worker
+name: Deploy Cloudflare Worker (Rust)
 
 on:
   push:
     branches:
       - main
+    paths:
+      - '.cloudflare/**'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout code
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Install Wrangler v4
-      - name: Install Wrangler v4
-        run: npm install --save-dev wrangler@latest
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
 
-      # Run Bash script to generate generated_files.rs
-      - name: Generate Rust files from demo
-        run: |
-          chmod +x ./worker/generate-files.sh
-          cd worker && ./generate-files.sh
+      - name: Cache Cargo Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ".cloudflare -> target"
 
-      - name: Generate routes
-        run: |
-          cd worker
-          sed -i '/\[\[routes\]\]/,$d' wrangler.toml
-          echo "" >> wrangler.toml
-          echo "[[routes]]" >> wrangler.toml
-          echo "pattern = \"${DOMAIN}\"" >> wrangler.toml
-          echo "custom_domain = true" >> wrangler.toml
-        env:
-          DOMAIN: ${{ secrets.DOMAIN }}
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      # Deploy Worker using official action
+      - name: Install worker-build
+        run: cargo install worker-build
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: ./worker
+          workingDirectory: '.cloudflare'
+          command: deploy
+          wranglerVersion: "latest"
