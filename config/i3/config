@@ -30,6 +30,9 @@ exec_always --no-startup-id dunst &
 # run battery low warning
 exec_always --no-startup-id battery &
 
+# Tự động chạy IBus daemon ở chế độ nền
+exec_always --no-startup-id ibus-daemon -drxR
+
 # monitor settings
 bindsym $mod+n exec xrandr --auto --output eDP-1 --mode 1920x1080 --right-of HDMI-1 && i3-msg restart &
 bindsym $mod+m exec xrandr --auto --output HDMI-1 --off && i3-msg restart &
@@ -73,9 +76,8 @@ bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ to
 # bindsym XF86AudioMicMute exec --no-startup-id amixer -D pulse sset Master 5%+ && volume &
 
 # Brightness Control
-exec_always --no-startup-id light -I
-bindsym XF86MonBrightnessUp exec light -A 2 && light -O && brightness &
-bindsym XF86MonBrightnessDown exec light -U 2 && light -O && brightness &
+bindsym XF86MonBrightnessUp exec --no-startup-id brightness increase
+bindsym XF86MonBrightnessDown exec --no-startup-id brightness decrease
 
 # brightness control hdmi
 bindsym Ctrl+F7 exec brightness_hdmi down

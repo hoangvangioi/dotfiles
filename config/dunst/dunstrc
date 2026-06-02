@@ -5,11 +5,12 @@
     origin = bottom-center
     progress_bar = false
     vertical_alignment = center
-    font = JetBrainsMono Nerd 10
+    font = JetBrainsMono Nerd Font 10
 
     width = (110, 300)
-    height = 100
-    offset = 15x15 
+    height = (0, 100)
+    offset = (15, 15)
+    
     corner_radius = 10 
     separator_height = 1
     padding = 16
@@ -23,8 +24,8 @@
     min_icon_size = 0
     max_icon_size = 64
     icon_corner_radius = 10
-    icon_path = /usr/local/bin/icons/
-    icon_theme = "Adwaita, Papirus-Dark"
+    icon_path = /usr/share/icons/Papirus/24x24/panel/:/usr/share/icons/Papirus/24x24/status/
+    icon_theme = Papirus
     enable_recursive_icon_lookup = true
 
     timeout = 3
@@ -33,7 +34,7 @@
     line_height = 0
     stack_duplicates = false
     hide_duplicate_count = true 
-    word_wrap = false
+    word_wrap = yes
     ellipsize = end
     show_indicators = yes
     indicate_hidden = false 
@@ -49,23 +50,18 @@
     background = "#1e1e2e"
     foreground = "#99AEB3"
     timeout = 8
-    # highlight = "#6fa6e7"
-    # frame_color = "#272f57"
 
 [urgency_normal]
     background = "#1e1e2e"
     foreground = "#99AEB3"
     timeout = 8
-    # highlight = "#5ca1ff"
-    # frame_color = "#272f57"
 
 [urgency_critical]
     background = "#EBA0AC"
     foreground = "#1E1E2E"
+    frame_color = "#F38BA8"
     timeout = 0
-    # highlight = "#fe6c5a"
-    # frame_color = "#52426e"
-    # icon = battery-ac-adapter
+
 
 [backlight]
     appname = "Backlight"
@@ -79,4 +75,4 @@
     highlight = "#cb8cf4"
 
 [battery]
-    appname = "Power Warning"
+    appname = "Battery"

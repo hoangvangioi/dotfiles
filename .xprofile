@@ -1,16 +1,20 @@
 #!/bin/sh
 
-# IBus input method configuration
+# Desktop Environment Settings
+export XDG_CURRENT_DESKTOP="i3"
+export XDG_SESSION_TYPE="x11"
+export XDG_SESSION_DESKTOP="i3"
+
+# Input Method: IBus (Bamboo)
 export XMODIFIERS=@im=ibus
 export GTK_IM_MODULE=ibus
 export QT_IM_MODULE=ibus
 export SDL_IM_MODULE=ibus
-export QT4_IM_MODULE=ibus
 export CLUTTER_IM_MODULE=ibus
 export GLFW_IM_MODULE=ibus
 
-# Start ibus-daemon if not already running
-# -d: daemon mode, -r: replace, -x: XIM mode, -R: restart panel/config on die
-if ! pgrep -x "ibus-daemon" >/dev/null; then
-    ibus-daemon -drxR &
-fi
+# Default Applications
+export TERMINAL="alacritty"
+export EDITOR="nvim"
+export VISUAL="nvim"
+export BROWSER="firefox"
