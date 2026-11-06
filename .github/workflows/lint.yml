@@ -61,10 +61,16 @@ jobs:
 
           check_jsonc("config/fastfetch/config.jsonc")
 
-          try:
-              tomllib.load(open("config/alacritty/alacritty.toml", "rb"))
-          except Exception as exc:  # noqa: BLE001
-              errors.append(f"config/alacritty/alacritty.toml: {exc}")
+          for toml_file in (
+              "config/alacritty/alacritty.toml",
+              "config/yazi/yazi.toml",
+              "config/yazi/theme.toml",
+              "config/yazi/keymap.toml",
+          ):
+              try:
+                  tomllib.load(open(toml_file, "rb"))
+              except Exception as exc:  # noqa: BLE001
+                  errors.append(f"{toml_file}: {exc}")
 
           for line in errors:
               print(line)
