@@ -2,10 +2,11 @@
 
 DIR="$HOME/.config/rofi/themes"
 
-# Function to send playerctl commands to Spotify
+command -v playerctl >/dev/null 2>&1 || { echo "Error: playerctl not found" >&2; exit 1; }
+
+# Function to send playerctl commands to Spotify (never abort the script)
 player_action() {
-    # shellcheck disable=SC2086
-    playerctl --player=spotify $1
+    playerctl --player=spotify "$@" 2>/dev/null
 }
 
 # Get the status of the player
@@ -18,7 +19,7 @@ getmeta() {
 
 # Retrieve track duration
 getduration() {
-    playerctl metadata --format "{{ duration($1) }}"
+    playerctl --player=spotify metadata --format "{{ duration($1) }}" 2>/dev/null
 }
 
 # Format track information
@@ -53,24 +54,31 @@ URGENT_SHUFFLE_POS="6"
 ACTIVE_REPEAT_POS="7"
 URGENT_REPEAT_POS="7"
 
+active=""
+urgent=""
+
 # Check shuffle status
-SHUFFLE_STATUS=$(playerctl --player=spotify shuffle)
+SHUFFLE_STATUS=$(playerctl --player=spotify shuffle 2>/dev/null || true)
 if [[ $SHUFFLE_STATUS == "On" ]]; then
     active="-a $ACTIVE_SHUFFLE_POS"
 elif [[ $SHUFFLE_STATUS == "Off" ]]; then
     urgent="-u $URGENT_SHUFFLE_POS"
-else
-    echo "Unexpected shuffle case"
 fi
 
 # Check repeat status
-REPEAT_STATUS=$(playerctl --player=spotify loop)
+REPEAT_STATUS=$(playerctl --player=spotify loop 2>/dev/null || true)
 if [[ $REPEAT_STATUS == "Track" || $REPEAT_STATUS == "Playlist" ]]; then
-    [ -n "$active" ] && active+=",$ACTIVE_REPEAT_POS" || active="-a $ACTIVE_REPEAT_POS"
+    if [ -n "$active" ]; then
+        active+=",$ACTIVE_REPEAT_POS"
+    else
+        active="-a $ACTIVE_REPEAT_POS"
+    fi
 elif [[ $REPEAT_STATUS == "None" ]]; then
-    [ -n "$urgent" ] && urgent+=",$URGENT_REPEAT_POS" || urgent="-u $URGENT_REPEAT_POS"
-else
-    echo "Unexpected loop check case"
+    if [ -n "$urgent" ]; then
+        urgent+=",$URGENT_REPEAT_POS"
+    else
+        urgent="-u $URGENT_REPEAT_POS"
+    fi
 fi
 
 # General function to display rofi menus
@@ -121,10 +129,10 @@ case $OUTPUT in
         player_action play-pause
         ;;
     "$ICON_BACKWARD")
-        player_action "position 10-"
+        player_action position 10-
         ;;
     "$ICON_FORWARD")
-        player_action "position 10+"
+        player_action position 10+
         ;;
     "$ICON_PREV")
         player_action previous
@@ -135,15 +143,15 @@ case $OUTPUT in
     "$ICON_REPEAT")
         LOOP_STATUS=$(player_action loop)
         if [[ $LOOP_STATUS == "Track" || $LOOP_STATUS == "Playlist" ]]; then
-            player_action "loop none"
+            player_action loop none
         elif [[ $LOOP_STATUS == "None" ]]; then
-            player_action "loop Track"
+            player_action loop Track
         else
             echo "Unexpected loop case"
         fi
         ;;
     "$ICON_SHUFFLE")
-        player_action "shuffle toggle"
+        player_action shuffle toggle
         ;;
     "$ICON_STOP")
         player_action stop
