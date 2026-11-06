@@ -31,7 +31,9 @@ jobs:
           node-version: 22
 
       - name: Install worker-build
-        run: cargo install worker-build
+        # pinned: an unpinned install can pull a version that is incompatible
+        # with the `worker` crate, and it invalidates the cargo cache
+        run: cargo install worker-build --version "^0.8" --locked
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3

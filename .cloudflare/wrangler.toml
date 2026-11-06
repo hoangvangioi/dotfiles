@@ -3,7 +3,9 @@ main = "build/index.js"
 compatibility_date = "2026-05-30"
 
 [build]
-command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
+# worker-build is installed by CI (.github/workflows/deploy.yml); installing it
+# again here pulled a second, possibly different version on every build
+command = "worker-build --release"
 
 [[routes]]
 pattern = "arch.hoangvangioi.com"
