@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Toggle the default microphone between muted / unmuted,
+# and show a notification with the matching icon.
+# Called from i3 (Control+F4) and used instead of a raw amixer command.
+
+dir_icons="${ICONS_DIR:-/usr/local/bin/icons}"
+
+# Check required commands
+for cmd in pactl dunstify; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd not found. Please install it first." >&2
+        exit 1
+    fi
+done
+
+muted="$(pactl get-source-mute @DEFAULT_SOURCE@ | awk '{print $2}')"
+
+if [ "$muted" = "yes" ]; then
+    pactl set-source-mute @DEFAULT_SOURCE@ 0
+    icon="${dir_icons}/mic.svg"
+    [ -f "$icon" ] || icon="audio-input-microphone"
+    dunstify -a "Microphone" "Microphone" "Microphone is unmuted" -r 100 -i "$icon"
+else
+    pactl set-source-mute @DEFAULT_SOURCE@ 1
+    icon="${dir_icons}/mic-off.svg"
+    [ -f "$icon" ] || icon="microphone-sensitivity-muted"
+    dunstify -a "Microphone" "Microphone" "Microphone is muted" -r 100 -i "$icon"
+fi
