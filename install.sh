@@ -7,8 +7,9 @@ shopt -s inherit_errexit 2>/dev/null || true
 # ============================================
 readonly CONFIG_DIR="${HOME}/.config"
 readonly SCRIPTS_DIR="/usr/local/bin"
-readonly DATE=$(date +%Y%m%d_%H%M%S)
-readonly TEMP_DIR=$(mktemp -d)
+DATE=$(date +%Y%m%d_%H%M%S)
+TEMP_DIR=$(mktemp -d)
+readonly DATE TEMP_DIR
 readonly LOG_FILE="${TEMP_DIR}/setup_${DATE}.log"
 readonly FINAL_LOG="${HOME}/.local/share/arch-setup/setup_${DATE}.log"
 
@@ -157,7 +158,8 @@ PACMAN_PKGS=(
     bluez bluez-utils
 
     # ── Xorg & Display ──
-    xorg xorg-xinit xclip
+    xorg-server xorg-xinit xorg-xrandr xorg-xinput xorg-xsetroot xorg-xset \
+    xorg-xprop xorg-xwininfo xorg-xdpyinfo xclip
 
     # ── Terminal & Shell ──
     alacritty zsh
@@ -184,7 +186,7 @@ PACMAN_PKGS=(
     feh maim
 
     # ── Screenshot ──
-    flameshot
+    flameshot xdotool slop
 
     # ── System Monitor ──
     btop
@@ -198,8 +200,11 @@ PACMAN_PKGS=(
     # ── Utilities ──
     bc jq ripgrep fd fzf bat eza tree
 
+    # ── File Manager, Editor, Viewer ──
+    ranger neovim zathura zathura-pdf-mupdf
+
     # ── Power & Hardware ──
-    upower acpi brightnessctl
+    upower acpi brightnessctl redshift
 
     # ── Screen Lock ──
     xss-lock
@@ -209,9 +214,6 @@ PACMAN_PKGS=(
 
     # ── Firmware ──
     sof-firmware
-
-    # ── Time & Sync ──
-    ntp
 
     # ── Archive ──
     unzip p7zip
@@ -236,16 +238,7 @@ AUR_PKGS=(
     pulsemixer
 
     # ── Music ──
-    spotify playerctl
-
-    # ── Editor ──
-    neovim
-
-    # ── File Manager Enhancements ──
-    ranger
-
-    # ── PDF Reader ──
-    zathura zathura-pdf-mupdf
+    spotify
 
     # ── Dracula Theme & Icons ──
     dracula-gtk-theme dracula-icons-theme
@@ -256,24 +249,24 @@ AUR_PKGS=(
     # ── System Info ──
     neofetch
 
-    # ── Redshift ──
-    redshift
 )
 
 install_aur_pkgs() {
     log_info "Installing packages with yay..."
-    yay -S --noconfirm --needed "${AUR_PKGS[@]}"
+    # Install one by one so a single broken AUR package does not abort the setup
+    for pkg in "${AUR_PKGS[@]}"; do
+        yay -S --noconfirm --needed "${pkg}" || log_warn "Failed to install ${pkg}, continuing."
+    done
 
     log_info "Installing i3lock-color..."
-    local i3lock_dir="${TEMP_DIR}/i3lock-color"
-    git clone --depth 1 "https://github.com/Raymo111/i3lock-color.git" "${i3lock_dir}"
-    (cd "${i3lock_dir}" && ./install-i3lock-color.sh)
+    yay -S --noconfirm --needed i3lock-color || log_warn "i3lock-color could not be installed."
 }
 
 # ============================================
 # Backup
 # ============================================
-CONFIG_DIRS=(alacritty btop dunst gtk-3.0 gtk-4.0 i3 neofetch nvim picom polybar ranger rofi zathura)
+# Directories under ~/.config that this repo ships (gtk-4.0 is generated later)
+CONFIG_DIRS=(alacritty btop cava dunst fastfetch gtk-3.0 i3 nvim picom polybar ranger rofi zathura)
 
 create_backup() {
     log_info "Creating backup of existing configs..."
@@ -289,8 +282,11 @@ create_backup() {
     done
 
     if [[ -d "${SCRIPTS_DIR}" ]]; then
-        local scripts_backup="${TEMP_DIR}/scripts_backup_${DATE}"
+        # NOTE: TEMP_DIR is removed by the cleanup trap, so back up next to the
+        # other backups
+        local scripts_backup="${backup_dir}/scripts_${DATE}"
         sudo cp -a "${SCRIPTS_DIR}" "${scripts_backup}"
+        sudo chown -R "${USER}:$(id -gn)" "${scripts_backup}" 2>/dev/null || true
         log_info "Scripts directory backed up to ${scripts_backup}"
     fi
 
@@ -350,7 +346,6 @@ copy_files() {
 # ============================================
 install_gtk_theme() {
     log_info "Installing Dracula GTK theme and icons..."
-    yay -S --noconfirm --needed dracula-gtk-theme dracula-icons-theme bibata-cursor-theme-bin
 
     # Copy GTK-4.0 assets for libadwaita apps
     if [[ -d "/usr/share/themes/Dracula" ]]; then
@@ -416,7 +411,8 @@ install_zsh() {
     local zsh_path
     zsh_path="$(command -v zsh)"
     if [[ "${SHELL}" != "${zsh_path}" ]]; then
-        chsh -s "${zsh_path}"
+        grep -qxF "${zsh_path}" /etc/shells || echo "${zsh_path}" | sudo tee -a /etc/shells >/dev/null
+        chsh -s "${zsh_path}" || log_warn "Could not change the default shell, run: chsh -s ${zsh_path}"
     fi
 }
 
@@ -443,8 +439,11 @@ install_sddm() {
     yay -S --noconfirm --needed qt6-5compat qt6-declarative qt6-svg sddm
 
     if command -v systemctl &>/dev/null; then
-        sudo systemctl enable sddm.service --now 2>/dev/null || sudo systemctl enable sddm.service
-        log_info "SDDM service enabled."
+        if sudo systemctl enable sddm.service 2>/dev/null; then
+            log_info "SDDM service enabled."
+        else
+            log_warn "Could not enable sddm (is another display manager active?)."
+        fi
     fi
 
     if [[ -d "sddm-arch-theme" ]]; then
@@ -485,7 +484,7 @@ enable_services() {
     if command -v systemctl &>/dev/null; then
         sudo systemctl enable --now bluetooth.service 2>/dev/null || sudo systemctl enable bluetooth.service
         sudo systemctl enable --now NetworkManager.service 2>/dev/null || sudo systemctl enable NetworkManager.service
-        sudo systemctl enable --now ntpd.service 2>/dev/null || sudo systemctl enable ntpd.service
+        sudo systemctl enable --now systemd-timesyncd.service 2>/dev/null || sudo systemctl enable systemd-timesyncd.service
         log_info "Core services enabled."
     fi
 
