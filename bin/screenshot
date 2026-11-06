@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Check required commands
-for cmd in maim xclip dunstify; do
+for cmd in maim xclip; do
     if ! command -v "$cmd" &>/dev/null; then
         echo "Error: $cmd not found. Please install it." >&2
         exit 1
@@ -19,24 +19,51 @@ screenshot() {
     local mode="$1"
     local filename_prefix="$2"
     local filename
-    filename="$SCREENSHOTS_DIR/screenshot-$(date -u +'%Y%m%d-%H%M%SZ')-$filename_prefix.png"
+    local base
+    base="$SCREENSHOTS_DIR/screenshot-$(date +'%Y%m%d-%H%M%S')-$filename_prefix"
+    filename="${base}.png"
+    # Avoid overwriting a file captured in the same second
+    local n=1
+    while [ -e "$filename" ]; do
+        filename="${base}-${n}.png"
+        n=$((n + 1))
+    done
 
-    # Take the screenshot and save it
-    if [ -n "$mode" ]; then
-        # shellcheck disable=SC2086
-        maim --format=png $mode | tee >(xclip -selection clipboard -t image/png) > "$filename"
-    else
-        maim --format=png | tee >(xclip -selection clipboard -t image/png) > "$filename"
+    # Capture into a temp file first: writing straight into a pipeline hid
+    # maim's exit status and left an empty .png behind when the capture was
+    # cancelled (e.g. Escape while selecting an area).
+    local tmpfile
+    tmpfile="$(mktemp --suffix=.png)"
+    trap 'rm -f "$tmpfile"' RETURN
+
+    # shellcheck disable=SC2086
+    if ! maim --format=png $mode "$tmpfile"; then
+        echo "Screenshot cancelled." >&2
+        return 1
     fi
-    
+
+    if [ ! -s "$tmpfile" ]; then
+        echo "Screenshot cancelled (empty capture)." >&2
+        return 1
+    fi
+
+    mv -- "$tmpfile" "$filename"
+
+    # Copy to clipboard (does not block the screenshot if it fails)
+    if ! xclip -selection clipboard -t image/png -i "$filename" 2>/dev/null; then
+        echo "Warning: could not copy the screenshot to the clipboard." >&2
+    fi
+
     # Notify the user
-    dunstify -a "Screenshot" \
-             -i "$filename" \
-             -t 5000 \
-             "Screenshot Saved" \
-             "Saved to: $(basename "$filename")" \
-             -r 100
-    
+    if command -v dunstify &>/dev/null; then
+        dunstify -a "Screenshot" \
+                 -i "$filename" \
+                 -t 5000 \
+                 "Screenshot Saved" \
+                 "Saved to: $(basename "$filename")" \
+                 -r 100
+    fi
+
     echo "Screenshot saved: $filename"
 }
 
