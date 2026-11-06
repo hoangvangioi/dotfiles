@@ -14,24 +14,53 @@ EX_USAGE=64
 USE_DUNSTIFY=true
 DEFAULT_STEP=${BRIGHTNESS_STEP:-5}
 
-# Check if xbacklight is available
-if ! command -v xbacklight &>/dev/null; then
-    echo "Error: xbacklight not found. Please install xorg-xbacklight." >&2
+# Pick a backlight backend: brightnessctl (installed by install.sh) first,
+# then light, then xbacklight as a last resort (broken on most modern setups,
+# it needs the X org.xbacklight driver).
+if command -v brightnessctl &>/dev/null; then
+    BACKEND="brightnessctl"
+elif command -v light &>/dev/null; then
+    BACKEND="light"
+elif command -v xbacklight &>/dev/null; then
+    BACKEND="xbacklight"
+else
+    echo "Error: no backlight tool found. Please install brightnessctl." >&2
     exit 1
 fi
 
 get_brightness() {
-    xbacklight -get | cut -d. -f1
+    case "$BACKEND" in
+    brightnessctl)
+        local cur max
+        cur=$(brightnessctl get)
+        max=$(brightnessctl max)
+        if [ "${max:-0}" -gt 0 ]; then
+            echo $((cur * 100 / max))
+        else
+            echo 0
+        fi
+        ;;
+    light) light -G | cut -d. -f1 ;;
+    *) xbacklight -get | cut -d. -f1 ;;
+    esac
 }
 
 increase_brightness() {
     local -r step=$1
-    xbacklight -inc "$step"
+    case "$BACKEND" in
+    brightnessctl) brightnessctl set "${step}%+" ;;
+    light) light -A "$step" ;;
+    *) xbacklight -inc "$step" ;;
+    esac
 }
 
 decrease_brightness() {
     local -r step=$1
-    xbacklight -dec "$step"
+    case "$BACKEND" in
+    brightnessctl) brightnessctl set "${step}%-" ;;
+    light) light -U "$step" ;;
+    *) xbacklight -dec "$step" ;;
+    esac
 }
 
 notify_brightness() {
