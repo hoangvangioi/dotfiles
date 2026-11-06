@@ -1,0 +1,25 @@
+# Yazi configuration - https://yazi-rs.github.io/docs/configuration/yazi
+# Only the keys that differ from yazi's default preset are listed here; the
+# rest is merged from `yazi-config/preset/yazi-default.toml` at startup.
+
+[mgr]
+ratio          = [ 1, 4, 3 ]
+sort_by        = "alphabetical"
+sort_dir_first = true
+linemode       = "none"
+show_hidden    = false
+show_symlink   = true
+scrolloff      = 5
+
+[preview]
+# `image_filter` is the only knob worth changing: "triangle" is the cheapest
+# decent downscaler for the terminal image previews yazi draws via chafa.
+image_filter  = "triangle"
+image_quality = 75
+
+[tasks]
+process_workers = 5
+
+# `[plugin]` (fetchers/spotters/previewers) is left at the default preset: the
+# defaults already use the packages installed by install.sh
+# (ffmpegthumbnailer for video, poppler for pdf, chafa for images).

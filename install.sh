@@ -201,10 +201,19 @@ PACMAN_PKGS=(
     bc jq ripgrep fd fzf bat eza tree
 
     # ── File Manager, Editor, Viewer ──
-    ranger neovim zathura zathura-pdf-mupdf
+    yazi neovim zathura zathura-pdf-mupdf
+
+    # ── Yazi preview/opener dependencies ──
+    ffmpegthumbnailer poppler chafa imagemagick zoxide
+
+    # ── Input Method (replaces ibus + ibus-bamboo) ──
+    fcitx5 fcitx5-bamboo fcitx5-configtool fcitx5-gtk fcitx5-qt
+
+    # ── Night Light (replaces redshift, works on Wayland too) ──
+    gammastep geoclue
 
     # ── Power & Hardware ──
-    upower acpi brightnessctl redshift
+    upower acpi brightnessctl
 
     # ── Screen Lock ──
     xss-lock
@@ -266,7 +275,7 @@ install_aur_pkgs() {
 # Backup
 # ============================================
 # Directories under ~/.config that this repo ships (gtk-4.0 is generated later)
-CONFIG_DIRS=(alacritty btop cava dunst fastfetch gtk-3.0 i3 nvim picom polybar ranger rofi zathura)
+CONFIG_DIRS=(alacritty btop cava dunst fastfetch fcitx5 gammastep gtk-3.0 i3 nvim picom polybar rofi yazi zathura)
 
 create_backup() {
     log_info "Creating backup of existing configs..."
@@ -417,18 +426,30 @@ install_zsh() {
 }
 
 # ============================================
-# IBus Bamboo
+# fcitx5 (Bamboo)
 # ============================================
-install_ibus_bamboo() {
-    log_info "Installing ibus-bamboo..."
-    yay -S --noconfirm --needed ibus ibus-bamboo-git
+install_fcitx5() {
+    log_info "Installing fcitx5 with the Bamboo engine..."
+    sudo pacman -S --noconfirm --needed fcitx5 fcitx5-bamboo fcitx5-configtool fcitx5-gtk fcitx5-qt
 
-    if [[ -f "${HOME}/.config/ibus/ibus.conf" ]] && command -v dconf &>/dev/null; then
-        dconf load /desktop/ibus/ <"${HOME}/.config/ibus/ibus.conf"
-        log_info "IBus config loaded."
-    else
-        log_warn "IBus config not found or dconf unavailable, skipping config load."
+    # Bamboo must be the default IM: ship the profile instead of clicking
+    # through fcitx5-configtool
+    if [[ -d "./config/fcitx5" ]]; then
+        mkdir -p "${CONFIG_DIR}/fcitx5"
+        cp -r ./config/fcitx5/. "${CONFIG_DIR}/fcitx5/"
+        log_info "fcitx5 profile installed (Bamboo is the default IM)."
     fi
+
+    # Make sure nothing keeps pointing at ibus
+    if [[ -f "${CONFIG_DIR}/environment" ]]; then
+        sed -i '/IM_MODULE=ibus/d; /XMODIFIERS=@im=ibus/d' "${CONFIG_DIR}/environment" || true
+    fi
+
+    # Restart the daemon so the new profile is loaded (it re-execs on its own)
+    if command -v fcitx5-remote &>/dev/null; then
+        fcitx5-remote -r 2>/dev/null || true
+    fi
+    log_warn "Log out and back in so GTK/Qt pick up the fcitx5 modules."
 }
 
 # ============================================
@@ -542,7 +563,7 @@ main() {
         7 "Copy configs and scripts" off
         8 "Install Dracula GTK theme" off
         9 "Install Zsh and plugins" off
-        10 "Install Ibus Bamboo" off
+        10 "Install fcitx5 + Bamboo" off
         11 "Install SDDM theme" off
         12 "Install GRUB Bootloader theme" off
         13 "Enable system services" off
@@ -567,7 +588,7 @@ main() {
             7) copy_files ;;
             8) install_gtk_theme ;;
             9) install_zsh ;;
-            10) install_ibus_bamboo ;;
+            10) install_fcitx5 ;;
             11) install_sddm ;;
             12) install_grub_theme ;;
             13) enable_services ;;

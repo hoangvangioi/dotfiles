@@ -18,7 +18,9 @@ Personal Arch Linux dotfiles featuring i3-wm, Polybar, Rofi, Neovim, and the Dra
 | **Text Editor** | [Neovim](https://neovim.io) | `neovim` |
 | **File Manager** | [Nemo](https://github.com/linuxmint/nemo) | `nemo` |
 | **Display Manager** | [SDDM](https://github.com/sddm/sddm) | `sddm` |
-| **Input Method** | [IBus](https://github.com/ibus/ibus) + [Bamboo](https://github.com/BambooEngine/ibus-bamboo) | `ibus-bamboo-git` |
+| **Input Method** | [fcitx5](https://github.com/fcitx/fcitx5) + [Bamboo](https://github.com/fcitx/fcitx5-bamboo) | `fcitx5-bamboo` |
+| **Night Light** | [gammastep](https://gitlab.com/chinstrap/gammastep) | `gammastep` |
+| **Terminal File Manager** | [yazi](https://github.com/sxyazi/yazi) | `yazi` |
 | **System Info** | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | `fastfetch` |
 | **System Monitor** | [btop](https://github.com/aristocratos/btop) | `btop` |
 | **Audio Server** | [PipeWire](https://pipewire.org) | `pipewire` |
@@ -43,6 +45,14 @@ Personal Arch Linux dotfiles featuring i3-wm, Polybar, Rofi, Neovim, and the Dra
 | **Fastfetch**      | ![](./screenshots/fastfetch.png)      |
 
 ---
+
+## Notes after switching tools
+
+| Old | New | What to do after pulling |
+| --- | --- | --- |
+| `ibus-bamboo` | `fcitx5-bamboo` | `sudo pacman -S fcitx5 fcitx5-bamboo`, remove `ibus-bamboo-git`, log out (the `~/.xprofile` IME variables changed) |
+| `redshift` | `gammastep` | `sudo pacman -S gammastep geoclue`, remove `redshift`; `~/.config/redshift` is not read anymore |
+| `ranger` | `yazi` | `sudo pacman -S yazi ffmpegthumbnailer poppler chafa`, remove `ranger`; config lives in `~/.config/yazi` |
 
 ## Installation
 

@@ -5,13 +5,16 @@ export XDG_CURRENT_DESKTOP="i3"
 export XDG_SESSION_TYPE="x11"
 export XDG_SESSION_DESKTOP="i3"
 
-# Input Method: IBus (Bamboo)
-export XMODIFIERS=@im=ibus
-export GTK_IM_MODULE=ibus
-export QT_IM_MODULE=ibus
-export SDL_IM_MODULE=ibus
-export CLUTTER_IM_MODULE=ibus
-export GLFW_IM_MODULE=ibus
+# Input Method: fcitx5 (Bamboo)
+# fcitx5 is the XIM server name; the same variables are used on Wayland.
+export XMODIFIERS="@im=fcitx"
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export QT4_IM_MODULE=fcitx
+export SDL_IM_MODULE=fcitx
+export CLUTTER_IM_MODULE=fcitx
+export GLFW_IM_MODULE=fcitx
+export INPUT_METHOD=fcitx
 
 # Default Applications
 export TERMINAL="alacritty"

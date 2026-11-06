@@ -1,0 +1,10 @@
+# fcitx5 base configuration (schema: /usr/share/fcitx5/configdesc/*.desc).
+# Empty values fall back to the built-in default.
+[Hotkey]
+# Ctrl+Space triggers the group, Super+Space switches groups
+EnumerateWithTriggerKeys=True
+
+[Behavior]
+# Do not let applications override the state we set here
+ActiveByDefault=False
+ShareInputState=No

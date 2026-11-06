@@ -1,0 +1,17 @@
+# Yazi keymap - merged over `yazi-config/preset/keymap-default.toml`.
+# Yazi has no "prepend" section: entries declared here replace the default
+# binding with the same key sequence (the defaults keep working otherwise).
+
+[mgr]
+keymap = [
+	# --- Jump (defaults only ship g h/c/d/t and g <Space>) -----------------
+	{ on = [ "g", "D" ], run = "cd ~/Documents", desc = "Go to ~/Documents" },
+	{ on = [ "g", "p" ], run = "cd ~/Pictures",  desc = "Go to ~/Pictures" },
+	{ on = [ "g", "v" ], run = "cd ~/Videos",    desc = "Go to ~/Videos" },
+	{ on = [ "g", "m" ], run = "cd ~/Music",     desc = "Go to ~/Music" },
+	# --- Sorting shortcuts with the linemode they imply --------------------
+	{ on = [ ",", "s" ], run = [ "sort size --reverse=yes", "linemode size" ], desc = "Sort by size" },
+	{ on = [ ",", "n" ], run = [ "sort natural", "linemode none" ],           desc = "Sort naturally" },
+	# --- Shell -------------------------------------------------------------
+	{ on = [ "<C-v>" ], run = "shell --block --interactive", desc = "Open a shell here" },
+]
