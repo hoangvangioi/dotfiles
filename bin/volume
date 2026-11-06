@@ -15,6 +15,7 @@ done
 # Configuration
 SINK=$(pactl get-default-sink)
 MAX_VOLUME=${MAX_VOLUME:-100}
+DEFAULT_STEP=${VOLUME_STEP:-5}
 SOUND_VOLUME_CHANGED=${SOUND_VOLUME_CHANGED:-/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga}
 
 # Exit codes
@@ -96,8 +97,13 @@ notify() {
 }
 
 # Increase volume relative to current volume.
+is_number() {
+    [[ $1 =~ ^[0-9]+$ ]]
+}
+
 increase_volume() {
-    local step=${1:?$(error 'Step is required')}
+    local step=${1:-$DEFAULT_STEP}
+    is_number "$step" || { error "Invalid step '$step'"; exit "$EX_USAGE"; }
     local -r max_volume=$2
 
     if not_empty "$max_volume"; then
@@ -114,7 +120,8 @@ increase_volume() {
 
 # Decrease volume relative to current volume.
 decrease_volume() {
-    local -r step=${1:?$(error 'Step is required')}
+    local -r step=${1:-$DEFAULT_STEP}
+    is_number "$step" || { error "Invalid step '$step'"; exit "$EX_USAGE"; }
 
     pactl set-sink-volume "$SINK" "-${step}%"
 }
@@ -122,6 +129,7 @@ decrease_volume() {
 # Set volume.
 set_volume() {
     local -r vol=${1:?$(error 'Volume is required')}
+    is_number "$vol" || { error "Invalid volume '$vol'"; exit "$EX_USAGE"; }
     local -r max_volume=$2
 
     if not_empty "$max_volume" && ((vol > max_volume)); then
@@ -142,8 +150,8 @@ ${COLOR_YELLOW}Usage:${COLOR_RESET} $0 <command> [value]
 Control volume and related notifications.
 
 ${COLOR_YELLOW}Commands:${COLOR_RESET}
-    ${COLOR_GREEN}up <value>${COLOR_RESET}                  Increase volume by <value>%
-    ${COLOR_GREEN}down <value>${COLOR_RESET}                Decrease volume by <value>%
+    ${COLOR_GREEN}up [value]${COLOR_RESET}                  Increase volume by <value>% (default: $DEFAULT_STEP)
+    ${COLOR_GREEN}down [value]${COLOR_RESET}                Decrease volume by <value>% (default: $DEFAULT_STEP)
     ${COLOR_GREEN}set <value>${COLOR_RESET}                 Set volume to <value>%
     ${COLOR_GREEN}mute${COLOR_RESET}                        Toggle mute
     ${COLOR_GREEN}listen${COLOR_RESET}                      Listen for volume changes
@@ -151,6 +159,7 @@ ${COLOR_YELLOW}Commands:${COLOR_RESET}
 
 ${COLOR_YELLOW}Environment Variables:${COLOR_RESET}
     ${COLOR_GREEN}MAX_VOLUME${COLOR_RESET}                  Maximum volume limit (default: 100)
+    ${COLOR_GREEN}VOLUME_STEP${COLOR_RESET}                 Default step for up/down (default: 5)
     ${COLOR_GREEN}NOTIFY_PATH${COLOR_RESET}                 Path to dunstify executable
     ${COLOR_GREEN}SOUND_VOLUME_CHANGED${COLOR_RESET}        Sound file to play on change
 
@@ -200,12 +209,16 @@ exec_command() {
 
     case "$COMMAND" in
     up)
-        increase_volume "$1" "$MAX_VOLUME"
+        increase_volume "${1:-$DEFAULT_STEP}" "$MAX_VOLUME"
         ;;
     down)
-        decrease_volume "$1"
+        decrease_volume "${1:-$DEFAULT_STEP}"
         ;;
     set)
+        if [ -z "${1:-}" ]; then
+            error "set requires a volume value, e.g. '$0 set 50'"
+            exit "$EX_USAGE"
+        fi
         set_volume "$1" "$MAX_VOLUME"
         ;;
     mute)
@@ -222,7 +235,7 @@ exec_command() {
 
 # Play a sound file.
 play_sound() {
-    command_exists paplay && paplay -d "$SINK" "$SOUND_VOLUME_CHANGED" &
+    command_exists paplay && [ -f "$SOUND_VOLUME_CHANGED" ] && paplay "$SOUND_VOLUME_CHANGED" &
 }
 
 main() {
