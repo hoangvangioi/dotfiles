@@ -10,7 +10,8 @@ declare -A ICONS
 SITE_TO_USE=""
 
 CACHE_DIR="$HOME/.cache/rofi/web-search"
-BROWSER="microsoft-edge-stable"
+# Same browser i3 launches and install.sh installs
+BROWSER="${BROWSER:-firefox}"
 
 SITES=(
     ["google"]="https://www.google.com/search?q="
@@ -47,7 +48,7 @@ usage() {
         echo "              * $site"
     done
 
-    echo "  -b      give the browser to use, the default value is 'google-chrome-stable'"
+    echo "  -b      give the browser to use, the default value is '$BROWSER'"
 
     exit 1
 }
@@ -73,14 +74,14 @@ gen_sites_list() {
     for site in "${!SITES[@]}"; do
         menu_items+="$site\x00icon\x1f${ICONS[$site]}\n"
     done
-    echo -e "${menu_items%\\n}"
+    printf '%b' "${menu_items%\\n}"
 }
 
 # Generate the list of previously used search queries.
 gen_queries_list() {
     site=$1
 
-    cat "$CACHE_DIR/$site.txt"
+    [ -f "$CACHE_DIR/$site.txt" ] && cat "$CACHE_DIR/$site.txt"
 }
 
 # Write a given line to a given file to the top of the file.
@@ -107,9 +108,20 @@ write_to_top() {
 }
 
 # Handle the query.
+urlencode() {
+    # Minimal percent-encoding for the characters that matter in a search query
+    printf '%s' "$1" | sed -e 's/%/%25/g' -e 's/ /%20/g' -e 's/&/%26/g' \
+        -e 's/#/%23/g' -e 's/?/%3F/g' -e 's/+/%2B/g'
+}
+
 handle_query() {
     site=$1
     query=$2
+
+    if [ -z "${SITES[$site]:-}" ]; then
+        echo "Unknown site: $site" >&2
+        exit 1
+    fi
 
     # Write the query to file.
     # Check if the search query already exists.
@@ -123,24 +135,28 @@ handle_query() {
 
     # Open the corresponding site in google-chrome-stable.
     # google-chrome-stable "${SITES[$site]}$query"
-    $BROWSER "${SITES[$site]}$query"
+    $BROWSER "${SITES[$site]}$(urlencode "$query")"
 }
 
 main() {
     create_cache_dir
     create_cache_files
 
-    if [ "$@" ]; then
-        handle_query "google" "$@"
+    if [ "$#" -gt 0 ]; then
+        # `-s <site> <query>` must honour the chosen site
+        handle_query "${SITE_TO_USE:-google}" "$*"
     else
         # Check if search engine set.
         if [ "$SITE_TO_USE" ]; then
-            query=$(gen_queries_list "$SITE_TO_USE" | rofi -theme ~/.config/rofi/themes/launcher.rasi -dmenu -p "Search ($SITE_TO_USE)")
+            query=$(gen_queries_list "$SITE_TO_USE" | rofi -theme "$HOME/.config/rofi/themes/launcher.rasi" -dmenu -p "Search ($SITE_TO_USE)") || exit 0
+            [ -n "$query" ] || exit 0
 
             handle_query "$SITE_TO_USE" "$query"
         else
-            site=$(gen_sites_list | rofi -theme ~/.config/rofi/themes/launcher.rasi -dmenu -p "Search" -no-custom)
-            query=$(gen_queries_list "$site" | rofi -theme ~/.config/rofi/themes/launcher.rasi -dmenu -p "Search ($site)")
+            site=$(gen_sites_list | rofi -theme "$HOME/.config/rofi/themes/launcher.rasi" -dmenu -p "Search" -no-custom) || exit 0
+            [ -n "$site" ] || exit 0
+            query=$(gen_queries_list "$site" | rofi -theme "$HOME/.config/rofi/themes/launcher.rasi" -dmenu -p "Search ($site)") || exit 0
+            [ -n "$query" ] || exit 0
 
             handle_query "$site" "$query"
         fi
