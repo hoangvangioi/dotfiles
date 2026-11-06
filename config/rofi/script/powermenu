@@ -51,25 +51,35 @@ run_rofi() {
 
 # Execute Command
 run_cmd() {
-	selected="$(confirm_exit)"
+	local selected
+	# rofi exits 1 when the user presses Escape; that must not kill the script
+	selected="$(confirm_exit)" || exit 0
 	if [[ "$selected" == "$yes" ]]; then
 		if [[ $1 == '--shutdown' ]]; then
 			systemctl poweroff
 		elif [[ $1 == '--reboot' ]]; then
 			systemctl reboot
 		elif [[ $1 == '--suspend' ]]; then
-			mpc -q pause
-			amixer set Master mute
+			# mpc/amixer are not installed (and amixer is wrong on PipeWire)
+			if command -v pactl >/dev/null 2>&1; then
+				pactl set-sink-mute @DEFAULT_SINK@ 1 || true
+			fi
 			systemctl suspend
 		elif [[ $1 == '--logout' ]]; then
-			if [[ "$DESKTOP_SESSION" == 'openbox' ]]; then
+			# DESKTOP_SESSION is not always set; XDG_CURRENT_DESKTOP is the fallback
+			local session="${DESKTOP_SESSION:-${XDG_CURRENT_DESKTOP:-i3}}"
+			session="${session,,}"
+			if [[ "$session" == 'openbox' ]]; then
 				openbox --exit
-			elif [[ "$DESKTOP_SESSION" == 'bspwm' ]]; then
+			elif [[ "$session" == 'bspwm' ]]; then
 				bspc quit
-			elif [[ "$DESKTOP_SESSION" == 'i3' ]]; then
+			elif [[ "$session" == 'i3' ]]; then
 				i3-msg exit
-			elif [[ "$DESKTOP_SESSION" == 'plasma' ]]; then
+			elif [[ "$session" == 'plasma' ]]; then
 				qdbus org.kde.ksmserver /KSMServer logout 0 0 0
+			else
+				# last resort: ask i3, then logind
+				i3-msg exit 2>/dev/null || loginctl terminate-user "$USER"
 			fi
 		fi
 	else
@@ -78,25 +88,31 @@ run_cmd() {
 }
 
 # Actions
-chosen="$(run_rofi)"
-case ${chosen} in
-    $shutdown)
+chosen="$(run_rofi)" || exit 0
+# Note: quote the patterns, otherwise the icons inside them are glob-expanded
+case "${chosen}" in
+    "$shutdown")
 		run_cmd --shutdown
         ;;
-    $reboot)
+    "$reboot")
 		run_cmd --reboot
         ;;
-    $lock)
-		if [[ -x '/usr/bin/betterlockscreen' ]]; then
-			(sleep 0.3 && betterlockscreen -l) &
-		elif [[ -x '/usr/bin/i3lock' ]]; then
-			(sleep 0.3 && lock) &
+    "$lock")
+		# `lock` in command position could resolve to anything, use a path
+		if [[ -x '/usr/local/bin/lock' ]]; then
+			(sleep 0.3 && /usr/local/bin/lock) &
+		elif [[ -x "$HOME/.local/bin/lock" ]]; then
+			(sleep 0.3 && "$HOME/.local/bin/lock") &
+		elif command -v i3lock >/dev/null 2>&1; then
+			(sleep 0.3 && i3lock -c 21222c) &
+		else
+			notify-send "Lock" "No screen locker found (install i3lock-color)" 2>/dev/null || true
 		fi
         ;;
-    $suspend)
+    "$suspend")
 		run_cmd --suspend
         ;;
-    $logout)
+    "$logout")
 		run_cmd --logout
         ;;
 esac
