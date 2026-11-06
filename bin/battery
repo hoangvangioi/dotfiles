@@ -2,18 +2,32 @@
 
 set -euo pipefail
 
-LOCKFILE="/tmp/battery_notifier.lock"
+LOCKFILE="${XDG_RUNTIME_DIR:-/tmp}/battery_notifier.pid"
+
+# Make sure only one instance runs at a time (i3 restarts must not spawn duplicates)
 if [ -e "$LOCKFILE" ]; then
-    PID=$(cat "$LOCKFILE")
-    if kill -0 "$PID" 2>/dev/null; then
+    PID=$(cat "$LOCKFILE" 2>/dev/null || true)
+    if [ -n "${PID:-}" ] && kill -0 "$PID" 2>/dev/null; then
         kill "$PID" 2>/dev/null || kill -9 "$PID" 2>/dev/null
+        sleep 0.2
     fi
 fi
 echo "$$" > "$LOCKFILE"
-trap 'rm -f "$LOCKFILE"; exit' INT TERM EXIT
+
+cleanup() {
+    # Only remove the lockfile if it is still ours: otherwise the previous
+    # instance deletes the lock of the instance that replaced it.
+    [ "$(cat "$LOCKFILE" 2>/dev/null || true)" = "$$" ] && rm -f "$LOCKFILE"
+}
+trap cleanup INT TERM EXIT
+
+if ! command -v upower &>/dev/null; then
+    echo "upower could not be found, battery monitoring disabled." >&2
+    exit 1
+fi
 
 if ! command -v dunstify &>/dev/null; then
-    echo "dunstify could not be found, notifications will not work."
+    echo "dunstify could not be found, notifications will not work." >&2
     exit 1
 fi
 
@@ -45,7 +59,7 @@ get_battery_icon_path() {
     
     if [ "$level" -eq -1 ]; then
         echo "${PAPIRUS_DIR}/status/battery-missing.svg"
-        return
+        return 0
     fi
 
     local icon_name="battery-good"
@@ -111,7 +125,8 @@ send_notification() {
     notify "$title" "$summary" "$urgency" "$icon_path" "$level"
 }
 
-path_to_battery=$(upower -e | grep -E 'BAT[0-1]' | head -n 1)
+# upower -e also lists the AC adapter, and batteries are not always BAT0/BAT1
+path_to_battery=$(upower -e 2>/dev/null | grep -E 'BAT[0-9]+$' | head -n 1)
 if [ -z "$path_to_battery" ]; then
     missing_icon=$(get_battery_icon_path -1 "")
     notify "Battery Not Found" "Unable to detect battery device." "critical" "$missing_icon" 0
