@@ -57,7 +57,9 @@ scan_on() {
 # Toggles scanning state
 toggle_scan() {
     if scan_on; then
-        kill $(pgrep -f "bluetoothctl --timeout 5 scan on")
+        # pgrep returns nothing (and 'kill' then fails) when no scan is running
+        pids=$(pgrep -f "bluetoothctl --timeout 5 scan on" || true)
+        [ -n "$pids" ] && kill $pids 2>/dev/null
         bluetoothctl scan off
         show_menu
     else
@@ -123,13 +125,12 @@ device_connected() {
 
 # Toggles device connection
 toggle_connection() {
-    if device_connected "$1"; then
+    if device_connected "$1" >/dev/null; then
         bluetoothctl disconnect "$1"
-        device_menu "$device"
     else
         bluetoothctl connect "$1"
-        device_menu "$device"
     fi
+    device_menu "$device"
 }
 
 # Checks if a device is paired
@@ -146,13 +147,12 @@ device_paired() {
 
 # Toggles device paired state
 toggle_paired() {
-    if device_paired "$1"; then
+    if device_paired "$1" >/dev/null; then
         bluetoothctl remove "$1"
-        device_menu "$device"
     else
         bluetoothctl pair "$1"
-        device_menu "$device"
     fi
+    device_menu "$device"
 }
 
 # Checks if a device is trusted
@@ -169,13 +169,12 @@ device_trusted() {
 
 # Toggles device connection
 toggle_trust() {
-    if device_trusted "$1"; then
+    if device_trusted "$1" >/dev/null; then
         bluetoothctl untrust "$1"
-        device_menu "$device"
     else
         bluetoothctl trust "$1"
-        device_menu "$device"
     fi
+    device_menu "$device"
 }
 
 # Prints a short string with the current bluetooth status
@@ -186,7 +185,9 @@ print_status() {
 
         paired_devices_cmd="devices Paired"
         # Check if an outdated version of bluetoothctl is used to preserve backwards compatibility
-        if (( $(echo "$(bluetoothctl version | cut -d ' ' -f 2) < 5.65" | bc -l) )); then
+        version=$(bluetoothctl version | awk '{print $2; exit}')
+        # "5.79" -> needs awk because bc is not guaranteed to be installed
+        if awk -v v="${version:-0}" 'BEGIN { exit !(v < 5.65) }'; then
             paired_devices_cmd="paired-devices"
         fi
 
@@ -231,7 +232,8 @@ device_menu() {
     options="$connected\n$paired\n$trusted\n$divider\n$goback\nExit"
 
     # Open rofi menu, read chosen option
-    chosen="$(echo -e "$options" | $rofi_command "$device_name")"
+    # shellcheck disable=SC2086
+    chosen="$(printf '%b\n' "$options" | $rofi_command "$device_name")" || chosen=""
 
     # Match chosen option to command
     case "$chosen" in
@@ -276,7 +278,8 @@ show_menu() {
     fi
 
     # Open rofi menu, read chosen option
-    chosen="$(echo -e "$options" | $rofi_command "Bluetooth")"
+    # shellcheck disable=SC2086
+    chosen="$(printf '%b\n' "$options" | $rofi_command "Bluetooth")" || chosen=""
 
     # Match chosen option to command
     case "$chosen" in
@@ -296,7 +299,7 @@ show_menu() {
             toggle_pairable
             ;;
         *)
-            device=$(bluetoothctl devices | grep "$chosen")
+            device=$(bluetoothctl devices | grep -F -- "$chosen")
             # Open a submenu if a device is selected
             if [[ $device ]]; then device_menu "$device"; fi
             ;;
@@ -304,7 +307,7 @@ show_menu() {
 }
 
 # Rofi command to pipe into, can add any options here
-rofi_command="rofi -dmenu $* -p"
+rofi_command="rofi -dmenu -theme $HOME/.config/rofi/themes/bluetooth.rasi -p"
 
 case "$1" in
     --status)
