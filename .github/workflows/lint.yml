@@ -1,0 +1,93 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      # Only the scripts shipped by this repo (not config/nvim/.gitignore etc.)
+      - name: Run shellcheck
+        run: |
+          mapfile -t scripts < <(
+            find bin config/rofi/script -maxdepth 1 -type f ! -name '*.svg' -print
+            echo install.sh
+            echo config/polybar/launch.sh
+          )
+          shellcheck --severity=warning --format=gcc "${scripts[@]}"
+
+  syntax:
+    name: Syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash -n / sh -n every script
+        run: |
+          status=0
+          for f in bin/* config/rofi/script/* config/polybar/launch.sh install.sh; do
+            [ -f "$f" ] || continue
+            case "$(head -1 "$f")" in
+              *bash*) bash -n "$f" || status=1 ;;
+              */sh*)  sh -n  "$f" || status=1 ;;
+            esac
+          done
+          exit "$status"
+
+      - name: Validate JSON/TOML configs
+        run: |
+          python3 - <<'PY'
+          import json, re, sys, tomllib
+
+          errors = []
+
+          def check_jsonc(path):
+              src = open(path, encoding="utf-8").read()
+              src = re.sub(r"^\s*//.*$", "", src, flags=re.M)
+              src = re.sub(r'\s//[^"\n]*$', "", src, flags=re.M)
+              try:
+                  json.loads(src)
+              except Exception as exc:  # noqa: BLE001
+                  errors.append(f"{path}: {exc}")
+
+          check_jsonc("config/fastfetch/config.jsonc")
+
+          try:
+              tomllib.load(open("config/alacritty/alacritty.toml", "rb"))
+          except Exception as exc:  # noqa: BLE001
+              errors.append(f"config/alacritty/alacritty.toml: {exc}")
+
+          for line in errors:
+              print(line)
+          sys.exit(1 if errors else 0)
+          PY
+
+      - name: Every polybar module referenced must exist
+        run: |
+          python3 - <<'PY'
+          import re, sys
+
+          defined = set()
+          for path in ("config/polybar/modules.ini", "config/polybar/glyphs.ini"):
+              defined |= set(re.findall(r"^\[module/([^\]]+)\]",
+                                        open(path, encoding="utf-8").read(), re.M))
+
+          used = set()
+          for line in re.findall(r"^modules-\w+\s*=\s*(.*)$",
+                                 open("config/polybar/config.ini", encoding="utf-8").read(), re.M):
+              used |= set(line.split())
+
+          missing = sorted(used - defined)
+          for module in missing:
+              print(f"polybar: unknown module '{module}'")
+          sys.exit(1 if missing else 0)
+          PY
