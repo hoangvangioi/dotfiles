@@ -75,27 +75,38 @@ display_unicode() {
     local end="$2"
     local count=0
 
-    for n in $(seq "$start" "$end"); do
+    for ((n = start; n <= end; n++)); do
         local n_hex
-        n_hex=$(printf "%04x" "$n")
+        local glyph
+        printf -v n_hex '%04x' "$n"
+        # \U needs exactly 8 hex digits *literal in the format string* plus a
+        # UTF-8 locale, otherwise bash prints a literal "\U0000e0b0".
+        # shellcheck disable=SC2059
+        printf -v glyph "\\U$(printf '%08x' "$n")"
         if [ "$format" = "table" ]; then
-            printf "%-5s\U$n_hex\t" "$n_hex"
+            printf '%-5s%s\t' "$n_hex" "$glyph"
         elif [ "$format" = "list" ]; then
-            printf "U+$n_hex\t\U$n_hex\n"
+            printf 'U+%s\t%s\n' "$n_hex" "$glyph"
         fi
         count=$((count + 1))
-        if [ "$format" = "table" ] && [ $((count % columns)) = 0 ]; then
-            printf "\n"
+        if [ "$format" = "table" ] && [ $((count % columns)) -eq 0 ]; then
+            printf '\n'
         fi
     done
-    printf "\n"
+    printf '\n'
 }
 
-# Process character range
+# Always render UTF-8, otherwise bash will not translate \u / \U escapes
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+
+# fc-match can report a single codepoint ("20") or a range ("e000-e0ff") per token
 if [ -z "$range" ]; then
     for r in $(fc-match --format='%{charset}\n' "$font"); do
-        display_unicode "0x${r%-*}" "0x${r#*-}"
+        case "$r" in
+        *-*) display_unicode "0x${r%%-*}" "0x${r##*-}" ;;
+        *) display_unicode "0x$r" "0x$r" ;;
+        esac
     done
 else
-    display_unicode "0x${range%-*}" "0x${range#*-}"
+    display_unicode "0x${range%%-*}" "0x${range##*-}"
 fi
