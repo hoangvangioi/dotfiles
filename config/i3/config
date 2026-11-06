@@ -15,7 +15,7 @@ bindsym $mod+Return exec --no-startup-id alacritty
 # kill focused window
 bindsym $mod+Shift+q kill
 
-# Launch Polybar. Take a look at ~/.confi/polybar/config to configure the bar.
+# Launch Polybar. Take a look at ~/.config/polybar/config.ini to configure the bar.
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 
 # Display Wallpaper, always.
@@ -24,18 +24,19 @@ exec_always feh --no-fehbg --bg-scale $HOME/Pictures/wallpapers/dracula.png
 #Compositor. This helps in transparency and fading.
 exec_always --no-startup-id picom -f
 
-# run dunst
-exec_always --no-startup-id dunst &
+# run dunst (notification daemon) - exec, not exec_always: a daemon must not be
+# duplicated on every i3 reload/restart
+exec --no-startup-id dunst
 
 # run battery low warning
-exec_always --no-startup-id battery &
+exec --no-startup-id battery
 
 # Tự động chạy IBus daemon ở chế độ nền
 exec_always --no-startup-id ibus-daemon -drxR
 
 # monitor settings
-bindsym $mod+n exec xrandr --auto --output eDP-1 --mode 1920x1080 --right-of HDMI-1 && i3-msg restart &
-bindsym $mod+m exec xrandr --auto --output HDMI-1 --off && i3-msg restart &
+bindsym $mod+n exec --no-startup-id xrandr --auto --output eDP-1 --mode 1920x1080 --right-of HDMI-1 && i3-msg restart
+bindsym $mod+m exec --no-startup-id xrandr --auto --output HDMI-1 --off && i3-msg restart
 
 # run rofi programs
 bindsym $mod+d exec "rofi -show drun -modi run,drun,ssh,window -scroll-method 0 -terminal alacritty -kb-cancel Escape -theme ~/.config/rofi/themes/launcher.rasi -config ~/.config/rofi/config.rasi"
@@ -61,7 +62,7 @@ bindsym Shift+Print exec --no-startup-id "screenshot select"
 # screen before suspend. Use loginctl lock-session to lock your screen.
 
 # The 4 lines of text above come from i3 documentation. Waking up from a suspended
-# system will launch betterlockscreen
+# system will run our own i3lock script (/usr/local/bin/lock)
 exec --no-startup-id xss-lock --transfer-sleep-lock -- lock
 
 # NetworkManager is the most popular way to manage wireless networks on Linux,
@@ -70,32 +71,31 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- lock
 exec --no-startup-id nm-applet
 
 # Volume Control
-bindsym XF86AudioRaiseVolume exec --no-startup-id amixer -D pulse sset Master 5%+ && volume &
-bindsym XF86AudioLowerVolume exec --no-startup-id amixer -D pulse sset Master 5%- && volume &
-bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle && mute &
-# bindsym XF86AudioMicMute exec --no-startup-id amixer -D pulse sset Master 5%+ && volume &
+bindsym XF86AudioRaiseVolume exec --no-startup-id volume up 5
+bindsym XF86AudioLowerVolume exec --no-startup-id volume down 5
+bindsym XF86AudioMute exec --no-startup-id volume mute
+# bindsym XF86AudioMicMute exec --no-startup-id toggle-mic
 
 # Brightness Control
 bindsym XF86MonBrightnessUp exec --no-startup-id brightness increase
 bindsym XF86MonBrightnessDown exec --no-startup-id brightness decrease
 
 # brightness control hdmi
-bindsym Ctrl+F7 exec brightness_hdmi down
-bindsym Ctrl+F8 exec brightness_hdmi up
+bindsym Ctrl+F7 exec --no-startup-id brightness-hdmi down
+bindsym Ctrl+F8 exec --no-startup-id brightness-hdmi up
 
 # turn off screen
 # bindsym XF86ScreenSaver exec xset dpms force off
 
 # toggle microphone 
-bindsym ctrl + F3 exec amixer set Capture nocap && dunstify -a "Microphone" "Microphone" "Microphone is muted" -r 100 -i /usr/local/bin/icons/mic-off.svg
-bindsym ctrl + F4 exec amixer set Capture cap && dunstify -a "Microphone" "Microphone" "Microphone is unmuted" -r 100 -i /usr/local/bin/icons/mic.svg
+bindsym Control+F3 exec --no-startup-id toggle-mic
+bindsym Control+F4 exec --no-startup-id toggle-mic
 
 # Touchpad toggle /usr/local/bin/
 bindsym XF86TouchpadToggle exec --no-startup-id toggle-touchpad
 
 # Touchpad config
-exec --no-startup-id xinput set-prop $(xinput list | grep -oP 'Touchpad.*id=\K\d+') "libinput Disable While Typing Enabled" 0
-exec --no-startup-id xinput set-prop $(xinput list | grep -oP 'Touchpad.*id=\K\d+') "libinput Tapping Enabled" 1
+exec --no-startup-id sh -c 'id=$(xinput list | grep -oP "Touchpad.*id=\K\d+" | head -1); [ -n "$id" ] && xinput set-prop "$id" "libinput Tapping Enabled" 1 && xinput set-prop "$id" "libinput Disable While Typing Enabled" 0'
 
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
@@ -245,7 +245,8 @@ bindsym $mod+b workspace 5; exec firefox
 #eDP-X is the display used in Laptops.
 #HDMI-X is display used in Desktop connected to monitor with HDMI Cable.
 #VGA-X is display used in Desktop connected to monitor with VGA Cable.
-exec --no-startup-id xrandr --output HDMI-2 --right-of HDMI-1 --auto
+# (only apply when both outputs really exist, otherwise i3 logs an error on every start)
+exec --no-startup-id sh -c 'xrandr --query | grep -q "^HDMI-1 connected" && xrandr --query | grep -q "^HDMI-2 connected" && xrandr --output HDMI-2 --right-of HDMI-1 --auto'
 
 #Hide window title bar
 default_border pixel 1
