@@ -12,7 +12,19 @@ DATE=$(date '+%d-%m-%Y-%H-%M-%S')
 
 # Get screen dimensions
 getdim() {
-    xrandr | sed -n "s/\s*\([0-9]\+x[0-9]\+\).*\*.*/\1/p"
+    xrandr | sed -n "s/\s*\([0-9]\+x[0-9]\+\).*\*.*/\1/p" | head -1
+}
+
+# Audio input for ffmpeg: PipeWire/PulseAudio ("-f alsa -i default" is unreliable
+# when PipeWire owns the device)
+audio_input() {
+    echo "-f pulse -thread_queue_size 1024 -i default"
+}
+
+# Video encoding options shared by all recorders. "-c:v h264" is not a valid
+# encoder name, the software H.264 encoder is libx264.
+video_opts() {
+    echo "-c:v libx264 -preset ultrafast -crf 0 -pix_fmt yuv420p"
 }
 
 # Send a notification
@@ -20,29 +32,46 @@ notify() {
     notify-send "$1" "$2"
 }
 
+# Keep the pid file in sync with a running ffmpeg
+is_recording() {
+    [ -f "$PID_FILE" ] || return 1
+    # no `local` here: this script is POSIX sh
+    rec_pid="$(cat "$PID_FILE" 2>/dev/null)"
+    if [ -n "$rec_pid" ] && kill -0 "$rec_pid" 2>/dev/null; then
+        return 0
+    fi
+    rm -f "$PID_FILE"
+    return 1
+}
+
 # Stop all recording sessions
 stop() {
     if [ -f "$PID_FILE" ]; then
         recpid="$(cat "$PID_FILE")"
-        kill -15 "$recpid"
+        kill -15 "$recpid" 2>/dev/null || true
         rm -f "$PID_FILE"
         notify "Recording Stopped" "All recording processes have been stopped."
     else
         notify "No Recording" "No recording process found to stop."
     fi
-    pkill -fxn '(/\S+)*ffmpeg\s.*\sx11grab\s.*'
-    pkill -fxn '(/\S+)*ffmpeg\s.*\spulse\s.*'
 }
 
 # Record full screen video
 video_full_screen() {
-    ffmpeg -y -f x11grab -framerate 60 -s "$(getdim)" -i "$DISPLAY" -r 24 -use_wallclock_as_timestamps 1 -f alsa -thread_queue_size 1024 -i default -c:v h264 -crf 0 -preset ultrafast -c:a aac "$VIDEOS_DIR/video-fullscreen-$DATE.mp4" &
+    # shellcheck disable=SC2046
+    ffmpeg -y -f x11grab -framerate 60 -s "$(getdim)" -i "${DISPLAY:-:0}" \
+        $(audio_input) $(video_opts) -c:a aac \
+        "$VIDEOS_DIR/video-fullscreen-$DATE.mp4" &
     echo $! >"$PID_FILE"
     notify "Recording Started" "Full screen video recording started."
 }
 
 # Record video of selected area
 video_selected_area() {
+    if ! command -v slop >/dev/null 2>&1; then
+        notify "Recording Failed" "slop is required to select an area."
+        return 1
+    fi
     slop="$(slop -n -f '%w,%h,%x,%y')"
     w=$(echo "$slop" | cut -d ',' -f1)
     h=$(echo "$slop" | cut -d ',' -f2)
@@ -50,21 +79,29 @@ video_selected_area() {
     y=$(echo "$slop" | cut -d ',' -f4)
     wh="${w}x${h}"
 
-    ffmpeg -y -f x11grab -video_size "$wh" -framerate 60 -i :0.0+"$x","$y" -pix_fmt yuv420p "$VIDEOS_DIR/video-area-$DATE.mp4" &
+    # shellcheck disable=SC2046,SC2086
+    ffmpeg -y -f x11grab -video_size "$wh" -framerate 60 \
+        -i "${DISPLAY:-:0.0}+$x,$y" $(video_opts) \
+        "$VIDEOS_DIR/video-area-$DATE.mp4" &
     echo $! >"$PID_FILE"
     notify "Recording Started" "Selected area video recording started."
 }
 
 # Record audio from microphone
 audio_microphone() {
-    ffmpeg -f alsa -i default -c:a flac "$AUDIO_DIR/audio-microphone-$DATE.flac" &
+    ffmpeg -f pulse -i default -c:a flac "$AUDIO_DIR/audio-microphone-$DATE.flac" &
     echo $! >"$PID_FILE"
     notify "Recording Started" "Microphone audio recording started."
 }
 
 # Record audio from desktop
 audio_desktop() {
-    desktop_source=$(pacmd list-sources | grep -E '^\s+name: .*alsa_output' | cut -c 8- | sed 's/[<,>]//g')
+    # pacmd does not exist on PipeWire, use pactl and fall back to the monitor
+    desktop_source=$(pactl list short sources 2>/dev/null | awk '/monitor/ {print $2; exit}')
+    if [ -z "$desktop_source" ]; then
+        notify "Recording Failed" "No monitor source found for desktop audio."
+        return 1
+    fi
     ffmpeg -f pulse -i "$desktop_source" -c:a flac "$AUDIO_DIR/audio-desktop-$DATE.flac" &
     echo $! >"$PID_FILE"
     notify "Recording Started" "Desktop audio recording started."
@@ -72,6 +109,10 @@ audio_desktop() {
 
 # Record video of selected area with audio from microphone
 video_selected_area_audio_microphone() {
+    if ! command -v slop >/dev/null 2>&1; then
+        notify "Recording Failed" "slop is required to select an area."
+        return 1
+    fi
     slop="$(slop -n -f '%w,%h,%x,%y')"
     w=$(echo "$slop" | cut -d ',' -f1)
     h=$(echo "$slop" | cut -d ',' -f2)
@@ -79,20 +120,26 @@ video_selected_area_audio_microphone() {
     y=$(echo "$slop" | cut -d ',' -f4)
     wh="${w}x${h}"
 
-    ffmpeg -y -f x11grab -video_size "$wh" -framerate 60 -i :0.0+"$x","$y" -f alsa -i default -pix_fmt yuv420p "$VIDEOS_DIR/video-area-audio-$DATE.mp4" &
+    # shellcheck disable=SC2086,SC2046
+    ffmpeg -y -f x11grab -video_size "$wh" -framerate 60 \
+        -i "${DISPLAY:-:0.0}+$x,$y" $(audio_input) $(video_opts) -c:a aac \
+        "$VIDEOS_DIR/video-area-audio-$DATE.mp4" &
     echo $! >"$PID_FILE"
     notify "Recording Started" "Selected area video with microphone audio recording started."
 }
 
 # Record full screen video with audio from microphone
 video_full_screen_audio_microphone() {
-    ffmpeg -y -f x11grab -framerate 60 -s "$(getdim)" -i "$DISPLAY" -f alsa -i default -pix_fmt yuv420p "$VIDEOS_DIR/video-fullscreen-audio-$DATE.mp4" &
+    # shellcheck disable=SC2046,SC2086
+    ffmpeg -y -f x11grab -framerate 60 -s "$(getdim)" -i "${DISPLAY:-:0}" \
+        $(audio_input) $(video_opts) -c:a aac \
+        "$VIDEOS_DIR/video-fullscreen-audio-$DATE.mp4" &
     echo $! >"$PID_FILE"
     notify "Recording Started" "Full screen video with microphone audio recording started."
 }
 
 get_options() {
-    if [ -f "$PID_FILE" ]; then
+    if is_recording; then
         echo "󰕨  Stop Recording"
     fi
     echo "󰦲  Selected area video"
@@ -104,28 +151,33 @@ get_options() {
 }
 
 main() {
-    choice=$(printf "%b" "$(get_options)" | rofi -i -theme ~/.config/rofi/themes/launcher.rasi -dmenu -no-show-icons -no-sidebar-mode -lines 4 -width 30 -p "  ")
+    choice=$(get_options | rofi -i -dmenu -theme "$HOME/.config/rofi/themes/launcher.rasi" \
+        -no-show-icons -no-sidebar-mode -lines 4 -width 30 -p "  ")
 
-    case $choice in
-    '󰕨  Stop Recording')
+    # Match on the descriptive text only: leading icons/glyphs do not survive
+    # the round-trip through rofi reliably, which made every action a no-op.
+    label=$(printf '%s' "$choice" | sed 's/^[^A-Za-z]*//')
+
+    case "$label" in
+    'Stop Recording')
         stop
         ;;
-    '󰦲  Selected area video')
+    'Selected area video')
         video_selected_area
         ;;
-    '󰕧  Full screen video')
+    'Full screen video')
         video_full_screen
         ;;
-    '  Record audio (microphone)')
+    'Record audio (microphone)')
         audio_microphone
         ;;
-    '  Record audio (desktop)')
+    'Record audio (desktop)')
         audio_desktop
         ;;
-    '󰦲  Selected area video with audio (microphone)')
+    'Selected area video with audio (microphone)')
         video_selected_area_audio_microphone
         ;;
-    '󰕧  Full screen video with audio (microphone)')
+    'Full screen video with audio (microphone)')
         video_full_screen_audio_microphone
         ;;
     *)
