@@ -15,10 +15,12 @@ plugins=(
     zsh-autopair
     zsh-completions
     zsh-autosuggestions
+    you-should-use
+    # must stay last: it wraps the widgets registered by the plugins above
     zsh-syntax-highlighting
 )
 
-source $ZSH/oh-my-zsh.sh
+source "$ZSH/oh-my-zsh.sh"
 
 # User configuration
 export MANPATH="/usr/local/man:$MANPATH"
