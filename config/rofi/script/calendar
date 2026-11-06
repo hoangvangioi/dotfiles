@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+for cmd in cal rofi; do
+    command -v "$cmd" >/dev/null 2>&1 || { echo "Error: $cmd not found" >&2; exit 1; }
+done
+
 current_day=$(date +"%e")
 current_month=$(date +"%m")
 current_year=$(date +"%Y")
@@ -20,7 +24,9 @@ format_calendar () {
 }
 
 print_month() {
-    calendar="$(cal -v -- "$1" "$2" | tail -n +2 | sed -e 's/ /_/g')"
+    # `cal <month> <year>`: util-linux and BSD cal both accept this order.
+    # ('-v' means "vertical" on util-linux, it is not a version flag)
+    calendar="$(cal -- "$1" "$2" | tail -n +2 | sed -e 's/ /_/g' | sed -e '/^$/d')"
     format_calendar "$calendar"
 }
 
@@ -30,15 +36,16 @@ find_day_index() {
         for i in "${arr[@]}"; do
             if [[ "$i" == "$2" ]]; then
                 echo "$index"
-                break
+                return
             fi
-            ((index++))
+            index=$((index + 1))
         done
     done <<< "$1"
 }
 
 calendar_menu() {
-    calendar_header=$(cal -v -- "$month" "$year" | head -n 1)
+    calendar_header=$(cal -- "$month" "$year" | head -n 1)
+    calendar_header="${calendar_header//[$'\n']/}"
 
     month_page="$(print_month "$month" "$year")"
     calendar_body="\n\n\n$previous_month\n\n\n\n$month_page\n\n\n\n$next_month\n\n\n"
@@ -50,7 +57,7 @@ calendar_menu() {
     active=""
     selected_row=""
 
-    if [[ "$(echo "$current_month" | bc) $current_year" == "$(echo "$month" | bc) $year" ]]; then
+    if [[ "$((10#$current_month)) $current_year" == "$((10#$month)) $year" ]]; then
         # shellcheck disable=SC2004
         # shellcheck disable=SC2086
         current_day_index=$(($(find_day_index "$month_page" $current_day) + $calendar_body_column))
@@ -80,17 +87,17 @@ while true; do
     
     case $selected in
         "$previous_month")
-            ((month--))
+            month=$((month - 1))
             if [[ $month -lt 1 ]]; then
                 month=12
-                ((year--))
+                year=$((year - 1))
             fi
             ;;
         "$next_month")
-            ((month++))
+            month=$((month + 1))
             if [[ $month -gt 12 ]]; then
                 month=1
-                ((year++))
+                year=$((year + 1))
             fi
             ;;
         *)
