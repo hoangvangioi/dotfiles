@@ -415,6 +415,9 @@ install_zsh() {
     git_clone_if_not_exists "https://github.com/zsh-users/zsh-syntax-highlighting.git" "${custom_dir}/plugins/zsh-syntax-highlighting"
     git_clone_if_not_exists "https://github.com/MichaelAquilina/zsh-you-should-use.git" "${custom_dir}/plugins/you-should-use"
     git_clone_if_not_exists "https://github.com/fdellwing/zsh-bat.git" "${custom_dir}/plugins/zsh-bat"
+    # enabled in .zshrc, but oh-my-zsh does not bundle them
+    git_clone_if_not_exists "https://github.com/hlissner/zsh-autopair.git" "${custom_dir}/plugins/zsh-autopair"
+    git_clone_if_not_exists "https://github.com/zsh-users/zsh-completions.git" "${custom_dir}/plugins/zsh-completions"
 
     log_info "Setting Zsh as default shell..."
     local zsh_path
