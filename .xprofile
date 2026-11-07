@@ -5,12 +5,11 @@ export XDG_CURRENT_DESKTOP="i3"
 export XDG_SESSION_TYPE="x11"
 export XDG_SESSION_DESKTOP="i3"
 
-# Input Method: IBus (Bamboo)
-export XMODIFIERS=@im=ibus
-export GTK_IM_MODULE=ibus
-export QT_IM_MODULE=ibus
-export SDL_IM_MODULE=ibus
-export CLUTTER_IM_MODULE=ibus
+# Input Method: Fcitx5 (Bamboo)
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+export SDL_IM_MODULE=fcitx
 export GLFW_IM_MODULE=ibus
 
 # Default Applications

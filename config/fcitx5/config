@@ -1,0 +1,15 @@
+[Hotkey]
+EnumerateWithTriggerKeys=False
+
+[Hotkey/TriggerKeys]
+0=Alt+space
+1=Control+Shift_L
+
+[Behavior]
+ActiveByDefault=False
+resetStateWhenFocusIn=No
+ShareInputState=No
+PreeditEnabledByDefault=True
+ShowInputMethodInformation=True
+CompactInputMethodInformation=True
+AllowInputMethodForPassword=False

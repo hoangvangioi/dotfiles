@@ -421,18 +421,16 @@ install_zsh() {
 }
 
 # ============================================
-# IBus Bamboo
+# Fcitx5 Bamboo
 # ============================================
-install_ibus_bamboo() {
-    log_info "Installing ibus-bamboo..."
-    yay -S --noconfirm --needed ibus ibus-bamboo-git
+install_fcitx5_bamboo() {
+    log_info "Installing fcitx5 and fcitx5-bamboo..."
+    yay -S --noconfirm --needed fcitx5 fcitx5-bamboo fcitx5-gtk fcitx5-qt
 
-    if [[ -f "${HOME}/.config/ibus/ibus.conf" ]] && command -v dconf &>/dev/null; then
-        dconf load /desktop/ibus/ <"${HOME}/.config/ibus/ibus.conf"
-        log_info "IBus config loaded."
-    else
-        log_warn "IBus config not found or dconf unavailable, skipping config load."
-    fi
+    log_info "Deploying Fcitx5 configuration files..."
+    mkdir -p "${HOME}/.config/fcitx5"
+
+    cp -r "config/fcitx5/"* "${HOME}/.config/fcitx5/"
 }
 
 # ============================================
@@ -543,7 +541,7 @@ main() {
         7 "Copy configs and scripts" off
         8 "Install Dracula GTK theme" off
         9 "Install Zsh and plugins" off
-        10 "Install Ibus Bamboo" off
+        10 "Install Fcitx5 Bamboo" off
         11 "Install SDDM theme" off
         12 "Install GRUB Bootloader theme" off
         13 "Enable system services" off
@@ -568,7 +566,7 @@ main() {
             7) copy_files ;;
             8) install_gtk_theme ;;
             9) install_zsh ;;
-            10) install_ibus_bamboo ;;
+            10) install_fcitx5_bamboo ;;
             11) install_sddm ;;
             12) install_grub_theme ;;
             13) enable_services ;;
