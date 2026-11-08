@@ -58,8 +58,8 @@ run_cmd() {
 		elif [[ $1 == '--reboot' ]]; then
 			systemctl reboot
 		elif [[ $1 == '--suspend' ]]; then
-			mpc -q pause
-			amixer set Master mute
+			command -v mpc >/dev/null 2>&1 && mpc -q pause || true
+			command -v volume >/dev/null 2>&1 && volume mute || true
 			systemctl suspend
 		elif [[ $1 == '--logout' ]]; then
 			if [[ "$DESKTOP_SESSION" == 'openbox' ]]; then
@@ -79,24 +79,24 @@ run_cmd() {
 
 # Actions
 chosen="$(run_rofi)"
-case ${chosen} in
-    $shutdown)
+case "${chosen}" in
+    "$shutdown")
 		run_cmd --shutdown
         ;;
-    $reboot)
+    "$reboot")
 		run_cmd --reboot
         ;;
-    $lock)
+    "$lock")
 		if [[ -x '/usr/bin/betterlockscreen' ]]; then
 			(sleep 0.3 && betterlockscreen -l) &
 		elif [[ -x '/usr/bin/i3lock' ]]; then
 			(sleep 0.3 && lock) &
 		fi
         ;;
-    $suspend)
+    "$suspend")
 		run_cmd --suspend
         ;;
-    $logout)
+    "$logout")
 		run_cmd --logout
         ;;
 esac
