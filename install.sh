@@ -438,23 +438,25 @@ install_fcitx5_bamboo() {
 # ============================================
 install_sddm() {
     log_info "Installing SDDM theme..."
-    yay -S --noconfirm --needed qt6-5compat qt6-declarative qt6-svg sddm
+    # qt6-multimedia: Main.qml imports QtMultimedia (greeter crashes without it)
+    # qt6-svg:        the icons in Assets/   |   qt6-5compat: NOT needed
+    yay -S --noconfirm --needed sddm qt6-declarative qt6-svg qt6-multimedia qt6-virtualkeyboard
 
     if command -v systemctl &>/dev/null; then
-        sudo systemctl enable sddm.service --now 2>/dev/null || sudo systemctl enable sddm.service
-        log_info "SDDM service enabled."
+        sudo systemctl enable sddm.service --now 2>/dev/null ||
+            sudo systemctl enable sddm.service 2>/dev/null ||
+            log_warn "could not enable sddm.service"
     fi
 
-    if [[ -d "sddm-arch-theme" ]]; then
-        sudo mkdir -p /usr/share/sddm/themes
-        sudo cp -r sddm-arch-theme /usr/share/sddm/themes/
-        sudo tee /etc/sddm.conf >/dev/null <<'EOF'
-[Theme]
-Current=sddm-arch-theme
-EOF
+    # The theme lives on GitHub only, so fetch it, install it, drop the clone.
+    local dir="${XDG_CACHE_HOME:-$HOME/.cache}/sddm-arch-mauve"
+    rm -rf "$dir"
+    if git clone -q --depth 1 https://github.com/hoangvangioi/sddm-arch-mauve.git "$dir"; then
+        ( cd "$dir" && ./install.sh ) || { log_warn "theme install failed"; return 1; }
+        rm -rf "$dir"
         log_info "SDDM theme installed."
     else
-        log_warn "sddm-arch-theme directory not found, skipping."
+        log_warn "could not fetch the theme repo, skipping."
     fi
 }
 
