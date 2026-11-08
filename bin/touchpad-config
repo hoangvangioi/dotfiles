@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Apply sane libinput defaults to every touchpad found on the system.
+# Silently does nothing on machines without a touchpad (e.g. desktops).
+if ! command -v xinput >/dev/null 2>&1; then
+    echo "xinput not found, skipping touchpad configuration." >&2
+    exit 0
+fi
+
+found=0
+while read -r id; do
+    [[ -n "$id" ]] || continue
+    found=1
+    xinput set-prop "$id" "libinput Tapping Enabled" 1 2>/dev/null || true
+    xinput set-prop "$id" "libinput Disable While Typing Enabled" 0 2>/dev/null || true
+    xinput set-prop "$id" "libinput Natural Scrolling Enabled" 0 2>/dev/null || true
+done < <(xinput list | grep -i 'touchpad' | grep -oP 'id=\K[0-9]+' || true)
+
+if [[ "$found" -eq 0 ]]; then
+    echo "No touchpad found, nothing to do."
+fi

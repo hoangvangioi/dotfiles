@@ -96,8 +96,7 @@ bindsym ctrl + F4 exec amixer set Capture cap && dunstify -a "Microphone" "Micro
 bindsym XF86TouchpadToggle exec --no-startup-id toggle-touchpad
 
 # Touchpad config
-exec --no-startup-id xinput set-prop $(xinput list | grep -oP 'Touchpad.*id=\K\d+') "libinput Disable While Typing Enabled" 0
-exec --no-startup-id xinput set-prop $(xinput list | grep -oP 'Touchpad.*id=\K\d+') "libinput Tapping Enabled" 1
+exec --no-startup-id touchpad-config
 
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
