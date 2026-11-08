@@ -7,13 +7,30 @@ set -euo pipefail
 # Check required commands
 for cmd in pactl awk grep; do
     if ! command -v "$cmd" &>/dev/null; then
-        echo "Error: $cmd not found. Please install pulseaudio-utils." >&2
+        echo "Error: $cmd not found. Please install libpulse (pactl)." >&2
         exit 1
     fi
 done
 
 # Configuration
-SINK=$(pactl get-default-sink)
+get_default_sink() {
+    local sink=""
+    for _ in {1..20}; do
+        sink=$(pactl get-default-sink 2>/dev/null || true)
+        if [[ -n "$sink" ]]; then
+            echo "$sink"
+            return 0
+        fi
+        sleep 0.1
+    done
+    return 1
+}
+
+if ! SINK=$(get_default_sink); then
+    echo "Error: no default PulseAudio/PipeWire sink found." >&2
+    exit 1
+fi
+
 MAX_VOLUME=${MAX_VOLUME:-100}
 SOUND_VOLUME_CHANGED=${SOUND_VOLUME_CHANGED:-/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga}
 
