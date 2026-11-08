@@ -1,21 +1,21 @@
-# Open document in fit-width mode by default
+# Behavior
 set adjust-open "best-fit"
-
-set font "Roboto mono 15"
-
-# One page per row by default
 set pages-per-row 1
-
-# stop at page boundries
 set scroll-page-aware true
 set scroll-full-overlap 0.01
-set scroll-step 100
+set scroll-step 50
 
 set zoom-min 10
+set zoom-max 1000
+
 set guioptions ""
+set selection-clipboard clipboard
+set sandbox true
 
-# Dracula color theme
+# Font
+set font "JetBrainsMono Nerd Font Mono 13"
 
+# Dracula theme
 set notification-error-bg       rgba(255,85,85,1)     # Red
 set notification-error-fg       rgba(248,248,242,1)   # Foreground
 set notification-warning-bg     rgba(255,184,108,1)   # Orange
@@ -46,21 +46,48 @@ set highlight-active-color      rgba(255,121,198,0.5) # Pink
 set default-bg                  rgba(40,42,54,1)      # Background
 set default-fg                  rgba(248,248,242,1)   # Foreground
 
+# Loading screen
 set render-loading              true
-set render-loading-fg           rgba(40,42,54,1)      # Background
-set render-loading-bg           rgba(248,248,242,1)   # Foreground
+set render-loading-fg           rgba(248,248,242,1)   # Foreground
+set render-loading-bg           rgba(40,42,54,1)      # Background
 
-# Recolor mode settings
+# Recolor (dark mode PDF)
 set recolor                     true
 set recolor-lightcolor          rgba(40,42,54,1)      # Background
 set recolor-darkcolor           rgba(248,248,242,1)   # Foreground
-set recolor-reverse-video       true
+set recolor-reverse-video       false
 set recolor-keephue             true
 
-# f - Toggle Fullscreen
+# Keybindings
+# Dark mode toggle
+map <C-i> recolor
+map [fullscreen] <C-i> recolor
+map [index] <C-i> recolor
+
+# Vim-style navigation
+map J scroll down
+map K scroll up
+map gg goto 1
+map G goto 9999
+
+# Zoom
+map + zoom in
+map - zoom out
+map = zoom in
+map 0 zoom 100
+
+# Search
+map / search forward
+map ? search backward
+map n search-next
+map N search-prev
+
+# Utilities
+map r rotate cw
+map R reload
+map y copy-link
+map F follow
+
+# Fullscreen toggle
 map f toggle_fullscreen
 map [fullscreen] f toggle_fullscreen
-
-# i - Dark Mode Toggle
-map i recolor
-map [fullscreen] i recolor
