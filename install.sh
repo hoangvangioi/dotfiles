@@ -199,7 +199,7 @@ PACMAN_PKGS=(
     bc jq ripgrep fd fzf bat eza tree
 
     # ── Power & Hardware ──
-    upower acpi brightnessctl
+    upower acpi brightnessctl gammastep
 
     # ── Screen Lock ──
     xss-lock
@@ -255,9 +255,6 @@ AUR_PKGS=(
 
     # ── System Info ──
     neofetch
-
-    # ── Redshift ──
-    redshift
 )
 
 install_aur_pkgs() {

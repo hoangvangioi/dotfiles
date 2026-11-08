@@ -33,6 +33,8 @@ exec_always --no-startup-id battery &
 # Start Fcitx5 daemon in the background
 exec --no-startup-id fcitx5 -d
 
+exec --no-startup-id gammastep
+
 # monitor settings
 bindsym $mod+n exec xrandr --auto --output eDP-1 --mode 1920x1080 --right-of HDMI-1 && i3-msg restart &
 bindsym $mod+m exec xrandr --auto --output HDMI-1 --off && i3-msg restart &
@@ -86,7 +88,7 @@ bindsym Ctrl+F8 exec brightness_hdmi up
 # turn off screen
 # bindsym XF86ScreenSaver exec xset dpms force off
 
-# toggle microphone 
+# toggle microphone
 bindsym ctrl + F3 exec amixer set Capture nocap && dunstify -a "Microphone" "Microphone" "Microphone is muted" -r 100 -i /usr/local/bin/icons/mic-off.svg
 bindsym ctrl + F4 exec amixer set Capture cap && dunstify -a "Microphone" "Microphone" "Microphone is unmuted" -r 100 -i /usr/local/bin/icons/mic.svg
 
