@@ -20,7 +20,7 @@ if [ ! -f "$icon" ]; then
 fi
 
 # Find touchpad ID
-TOUCHPAD_ID=$(xinput list | grep -oP 'Touchpad.*id=\K\d+' | head -1)
+TOUCHPAD_ID=$(xinput list | grep -i 'touchpad' | grep -oP 'id=\K[0-9]+' | head -1)
 
 if [ -z "$TOUCHPAD_ID" ]; then
     echo "Error: No touchpad found" >&2
