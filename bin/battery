@@ -22,6 +22,8 @@ critical_level=${BATTERY_CRITICAL_LEVEL:-10}
 check_interval=${BATTERY_CHECK_INTERVAL:-5} 
 
 PAPIRUS_DIR="/usr/share/icons/Papirus/48x48"
+# Fall back to standard icon names when Papirus is not installed.
+[[ -d "$PAPIRUS_DIR" ]] || PAPIRUS_DIR=""
 
 previous_state=""
 notified_full=false
@@ -42,7 +44,24 @@ notify() {
 get_battery_icon_path() {
     local level="$1"
     local state="$2"
-    
+
+    if [ -z "$PAPIRUS_DIR" ]; then
+        if [ "$level" -eq -1 ]; then
+            echo "battery-missing-symbolic"
+        elif [ "$state" == "fully-charged" ] || [ "$level" -eq 100 ]; then
+            echo "battery-full-charged-symbolic"
+        elif [ "$state" == "charging" ]; then
+            echo "battery-good-charging-symbolic"
+        elif [ "$level" -le 10 ]; then
+            echo "battery-caution-symbolic"
+        elif [ "$level" -le 25 ]; then
+            echo "battery-low-symbolic"
+        else
+            echo "battery-good-symbolic"
+        fi
+        return
+    fi
+
     if [ "$level" -eq -1 ]; then
         echo "${PAPIRUS_DIR}/status/battery-missing.svg"
         return
@@ -92,19 +111,16 @@ send_notification() {
         if [ "$level" -eq 100 ]; then
             title="Battery Fully Charged"
             summary="Please unplug the charger."
-            icon_path="${PAPIRUS_DIR}/status/battery-full-charged.svg"
         fi
     elif [ "$state" == "discharging" ]; then
         if [ "$level" -le "$critical_level" ]; then
             title="BATTERY CRITICAL!"
             summary="Battery level is dangerously low ($level%). Connect charger NOW!"
             urgency="critical"
-            icon_path="${PAPIRUS_DIR}/status/battery-caution.svg" 
         elif [ "$level" -le "$warning_level" ]; then
             title="Battery Low"
             summary="Battery level is $level%. You should plug in soon."
             urgency="critical"
-            icon_path="${PAPIRUS_DIR}/status/battery-low.svg"
         fi
     fi
 
