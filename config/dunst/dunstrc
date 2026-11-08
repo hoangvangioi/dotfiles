@@ -10,18 +10,20 @@
     width = (110, 300)
     height = (0, 100)
     offset = (15, 15)
-    
-    corner_radius = 10 
+    gap_size = 8
+    notification_limit = 5
+
+    corner_radius = 10
     separator_height = 1
     padding = 16
     horizontal_padding = 24
     text_icon_padding = 16
     alignment = left
     frame_width = 1
-    frame_color = "#303446"
-    separator_color = foreground
+    frame_color = "#44475a"
+    separator_color = "#6272a4"
 
-    min_icon_size = 0
+    min_icon_size = 24
     max_icon_size = 64
     icon_corner_radius = 10
     icon_path = /usr/share/icons/Papirus/24x24/panel/:/usr/share/icons/Papirus/24x24/status/
@@ -29,16 +31,15 @@
     enable_recursive_icon_lookup = true
 
     timeout = 3
-    sort = true 
+    sort = true
     markup = full
     line_height = 0
     stack_duplicates = false
-    hide_duplicate_count = true 
+    hide_duplicate_count = true
     word_wrap = yes
     ellipsize = end
     show_indicators = yes
-    indicate_hidden = false 
-    idle_threshold = 120s
+    idle_threshold = 120
     show_age_threshold = 60
     dmenu = /usr/bin/rofi -p dunst:
     browser = /usr/bin/firefox --new-tab
@@ -47,32 +48,35 @@
     per_monitor_dpi = false
 
 [urgency_low]
-    background = "#1e1e2e"
-    foreground = "#99AEB3"
+    background = "#282a36"
+    foreground = "#f8f8f2"
     timeout = 8
 
 [urgency_normal]
-    background = "#1e1e2e"
-    foreground = "#99AEB3"
+    background = "#282a36"
+    foreground = "#f8f8f2"
     timeout = 8
 
 [urgency_critical]
-    background = "#EBA0AC"
-    foreground = "#1E1E2E"
-    frame_color = "#F38BA8"
+    background = "#ff5555"
+    foreground = "#282a36"
+    frame_color = "#ff79c6"
     timeout = 0
-
 
 [backlight]
     appname = "Backlight"
-    highlight = "#fc7b80"
+    highlight = "#ffb86c"
 
 [music]
     appname = "Music"
+    background = "#282a36"
+    foreground = "#f8f8f2"
+    highlight = "#50fa7b"
 
 [volume]
     summary = "Volume*"
-    highlight = "#cb8cf4"
+    highlight = "#bd93f9"
 
 [battery]
     appname = "Battery"
+    highlight = "#f1fa8c"
