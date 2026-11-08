@@ -14,24 +14,25 @@ EX_USAGE=64
 USE_DUNSTIFY=true
 DEFAULT_STEP=${BRIGHTNESS_STEP:-5}
 
-# Check if xbacklight is available
-if ! command -v xbacklight &>/dev/null; then
-    echo "Error: xbacklight not found. Please install xorg-xbacklight." >&2
+# brightnessctl is preferred: it works with both intel_backlight and
+# acpi_video0, and does not rely on the legacy xbacklight X11 extension.
+if ! command -v brightnessctl &>/dev/null; then
+    echo "Error: brightnessctl not found. Please install brightnessctl." >&2
     exit 1
 fi
 
 get_brightness() {
-    xbacklight -get | cut -d. -f1
+    brightnessctl -m | awk -F, '{ gsub(/%/, "", $4); print $4 }'
 }
 
 increase_brightness() {
     local -r step=$1
-    xbacklight -inc "$step"
+    brightnessctl set "${step}%+" >/dev/null
 }
 
 decrease_brightness() {
     local -r step=$1
-    xbacklight -dec "$step"
+    brightnessctl set "${step}%-" >/dev/null
 }
 
 notify_brightness() {
