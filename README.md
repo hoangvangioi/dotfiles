@@ -18,7 +18,7 @@ Personal Arch Linux dotfiles featuring i3-wm, Polybar, Rofi, Neovim, and the Dra
 | **Text Editor** | [Neovim](https://neovim.io) | `neovim` |
 | **File Manager** | [Nemo](https://github.com/linuxmint/nemo) | `nemo` |
 | **Display Manager** | [SDDM](https://github.com/sddm/sddm) | `sddm` |
-| **Input Method** | [IBus](https://github.com/ibus/ibus) + [Bamboo](https://github.com/BambooEngine/ibus-bamboo) | `ibus-bamboo-git` |
+| **Input Method** | [Fcitx5](https://github.com/fcitx/fcitx5) + [Bamboo](https://github.com/fcitx/fcitx5-bamboo) | `fcitx5-bamboo` |
 | **System Info** | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | `fastfetch` |
 | **System Monitor** | [btop](https://github.com/aristocratos/btop) | `btop` |
 | **Audio Server** | [PipeWire](https://pipewire.org) | `pipewire` |
