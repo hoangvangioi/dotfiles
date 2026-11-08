@@ -3,7 +3,7 @@
 set $mod Mod4
 
 # Font for window titles. Will also be used by the bar.
-font pango:monospace 15
+font pango:JetBrainsMono Nerd Font 10
 
 # This font is widely installed, provides lots of unicode glyphs, right-to-left
 # text rendering and scalability on retina/hidpi displays (thanks to pango).
@@ -15,31 +15,45 @@ bindsym $mod+Return exec --no-startup-id alacritty
 # kill focused window
 bindsym $mod+Shift+q kill
 
-# Launch Polybar. Take a look at ~/.confi/polybar/config to configure the bar.
+# Launch Polybar. Take a look at ~/.config/polybar/config to configure the bar.
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 
 # Display Wallpaper, always.
 exec_always feh --no-fehbg --bg-scale $HOME/Pictures/wallpapers/dracula.png
 
-#Compositor. This helps in transparency and fading.
-exec_always --no-startup-id picom -f
+# Compositor. This helps in transparency and fading.
+exec --no-startup-id picom --config $HOME/.config/picom/picom.conf -b
 
-# run dunst
-exec_always --no-startup-id dunst &
+# Notification daemon
+exec --no-startup-id dunst
 
-# run battery low warning
-exec_always --no-startup-id battery &
+# Run battery low warning
+exec --no-startup-id battery
 
 # Start Fcitx5 daemon in the background
 exec --no-startup-id fcitx5 -d
 
+# Color temperature adjustment
 exec --no-startup-id gammastep
+
+# Touchpad
+exec --no-startup-id touchpad-config
+
+
+# Multi-monitor (chỉ áp dụng nếu HDMI-2 đang kết nối)
+exec --no-startup-id sh -c 'xrandr | grep -q "^HDMI-2 connected" && xrandr --output HDMI-2 --right-of HDMI-1 --auto || true'
 
 # monitor settings
 bindsym $mod+n exec xrandr --auto --output eDP-1 --mode 1920x1080 --right-of HDMI-1 && i3-msg restart &
 bindsym $mod+m exec xrandr --auto --output HDMI-1 --off && i3-msg restart &
 
-# run rofi programs
+
+# Media keys (playerctl được cài trong install.sh)
+bindsym XF86AudioPlay exec --no-startup-id playerctl play-pause
+bindsym XF86AudioNext exec --no-startup-id playerctl next
+bindsym XF86AudioPrev exec --no-startup-id playerctl previous
+
+# Run rofi programs
 bindsym $mod+d exec "rofi -show drun -modi run,drun,ssh,window -scroll-method 0 -terminal alacritty -kb-cancel Escape -theme ~/.config/rofi/themes/launcher.rasi -config ~/.config/rofi/config.rasi"
 bindsym $mod+x exec "~/.config/rofi/script/powermenu"
 bindsym $mod+c exec "~/.config/rofi/script/recorder"
@@ -72,9 +86,9 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- lock
 exec --no-startup-id nm-applet
 
 # Volume Control
-bindsym XF86AudioRaiseVolume exec --no-startup-id amixer -D pulse sset Master 5%+ && volume &
-bindsym XF86AudioLowerVolume exec --no-startup-id amixer -D pulse sset Master 5%- && volume &
-bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle && mute &
+bindsym XF86AudioRaiseVolume exec --no-startup-id volume up 5
+bindsym XF86AudioLowerVolume exec --no-startup-id volume down 5
+bindsym XF86AudioMute exec --no-startup-id volume mute
 # bindsym XF86AudioMicMute exec --no-startup-id amixer -D pulse sset Master 5%+ && volume &
 
 # Brightness Control
@@ -82,21 +96,18 @@ bindsym XF86MonBrightnessUp exec --no-startup-id brightness increase
 bindsym XF86MonBrightnessDown exec --no-startup-id brightness decrease
 
 # brightness control hdmi
-bindsym Ctrl+F7 exec brightness_hdmi down
-bindsym Ctrl+F8 exec brightness_hdmi up
+bindsym Ctrl+F7 exec brightness-hdmi down
+bindsym Ctrl+F8 exec brightness-hdmi up
 
 # turn off screen
 # bindsym XF86ScreenSaver exec xset dpms force off
 
 # toggle microphone
-bindsym ctrl + F3 exec amixer set Capture nocap && dunstify -a "Microphone" "Microphone" "Microphone is muted" -r 100 -i /usr/local/bin/icons/mic-off.svg
-bindsym ctrl + F4 exec amixer set Capture cap && dunstify -a "Microphone" "Microphone" "Microphone is unmuted" -r 100 -i /usr/local/bin/icons/mic.svg
+bindsym Ctrl+F3 exec amixer set Capture nocap && dunstify -a "Microphone" "Microphone" "Microphone is muted" -r 100 -i /usr/local/bin/icons/mic-off.svg
+bindsym Ctrl+F4 exec amixer set Capture cap && dunstify -a "Microphone" "Microphone" "Microphone is unmuted" -r 100 -i /usr/local/bin/icons/mic.svg
 
 # Touchpad toggle /usr/local/bin/
 bindsym XF86TouchpadToggle exec --no-startup-id toggle-touchpad
-
-# Touchpad config
-exec --no-startup-id touchpad-config
 
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
@@ -153,6 +164,13 @@ bindsym $mod+a focus parent
 
 # 9B] focus the child container
 #bindsym $your_keybinding focus child
+
+# ----------------- SCRATCHPAD -----------------
+# Gửi cửa sổ hiện tại vào scratchpad (chạy ngầm)
+bindsym $mod+Shift+minus move scratchpad
+# Hiển thị hoặc ẩn cửa sổ đang ở trong scratchpad
+bindsym $mod+minus scratchpad show
+# ----------------------------------------------
 
 # Define names for default workspaces for which we configure key bindings later on.
 # We use variables to avoid repeating the names in multiple places.
@@ -240,15 +258,54 @@ for_window [class="firefox"] move to workspace $ws5
 bindsym $mod+b workspace 5; exec firefox
 
 
-#Multi Monitor (Dual Monitor, extended monitor)
-#Replace HDMI2 with DVI-2, VGA-2, DP-2, DVI-2 etc. Get value by typing xrandr in the terminal.
-#If X is a natural number, then;
-#eDP-X is the display used in Laptops.
-#HDMI-X is display used in Desktop connected to monitor with HDMI Cable.
-#VGA-X is display used in Desktop connected to monitor with VGA Cable.
-exec --no-startup-id xrandr --output HDMI-2 --right-of HDMI-1 --auto
-
 #Hide window title bar
 default_border pixel 1
 default_floating_border pixel 1
 for_window [class="^.*"] border pixel 1
+
+focus_follows_mouse yes
+mouse_warping output
+popup_during_fullscreen smart
+show_marks yes
+
+# Dialog & popup → floating
+for_window [window_type="dialog"] floating enable
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="task_dialog"] floating enable
+
+# App tiện ích → floating
+for_window [class="Pavucontrol"] floating enable
+for_window [class="Pavucontrol"] resize set 800 550
+for_window [class="Nm-connection-editor"] floating enable
+for_window [class="Blueman-manager"] floating enable
+for_window [class="Lxappearance"] floating enable
+for_window [class="Arandr"] floating enable
+for_window [class="feh"] floating enable
+
+# Picture-in-Picture của Firefox → floating + ghim trên mọi workspace
+for_window [title="Picture-in-Picture"] floating enable
+for_window [title="Picture-in-Picture"] sticky enable
+for_window [title="Picture-in-Picture"] resize set 640 360
+
+# Nhấn lại phím workspace hiện tại → quay về workspace trước (rất tiện)
+workspace_auto_back_and_forth yes
+
+# GAPS & BORDER — phần tạo độ "thoáng"
+gaps inner 8
+gaps outer 3
+
+# Không gaps/border khi workspace chỉ có 1 cửa sổ (gọn hơn hẳn)
+smart_gaps on
+smart_borders on
+
+# Toggle gaps nhanh
+bindsym $mod+Shift+g exec i3-msg "gaps inner all toggle 12; gaps outer all toggle 6"
+
+# class                 border         background     text           indicator      child_border
+client.focused          #bd93f9      #bd93f9      #f8f8f2      #ff79c6      #bd93f9
+client.focused_inactive #44475a      #44475a      #f8f8f2      #44475a      #44475a
+client.unfocused        #282a36      #282a36      #6272a4      #282a36      #282a36
+client.urgent           #ff5555      #ff5555      #f8f8f2      #ff5555      #ff5555
+client.placeholder      #282a36      #282a36      #f8f8f2      #282a36      #282a36
+
+client.background       #282a36
