@@ -43,6 +43,9 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- lock
 # Network tray applet.
 exec --no-startup-id nm-applet
 
+# Autotiling: automatically toggle between tiling and floating.
+exec --no-startup-id autotiling
+
 # ============================================================
 # Keybindings — applications
 # ============================================================

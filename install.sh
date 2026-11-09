@@ -2,18 +2,23 @@
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
+# Always operate relative to the repo root, no matter where the script is called from.
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
 # ============================================
 # Configuration
 # ============================================
 readonly CONFIG_DIR="${HOME}/.config"
 readonly SCRIPTS_DIR="/usr/local/bin"
-readonly DATE=$(date +%Y%m%d_%H%M%S)
-readonly TEMP_DIR=$(mktemp -d)
+DATE=$(date +%Y%m%d_%H%M%S)
+readonly DATE
+TEMP_DIR=$(mktemp -d)
+readonly TEMP_DIR
 readonly LOG_FILE="${TEMP_DIR}/setup_${DATE}.log"
 readonly FINAL_LOG="${HOME}/.local/share/arch-setup/setup_${DATE}.log"
 
 # ============================================
-# Colors (tương thích tốt hơn)
+# Colors (more compatible)
 # ============================================
 if [[ -t 1 ]]; then
     readonly GREEN='\e[0;32m'
@@ -71,7 +76,7 @@ save_log() {
 cleanup() {
     local exit_code=$?
 
-    # Save log trước khi xóa TEMP_DIR
+    # Save log before deleting TEMP_DIR
     local saved_log
     saved_log=$(save_log)
 
@@ -83,7 +88,7 @@ cleanup() {
         kill "${SUDO_PID}" 2>/dev/null || true
     fi
 
-    # In thông báo log đã được lưu
+    # Log message was saved
     if [[ -n "${saved_log:-}" ]]; then
         echo -e "\e[0;34m[→] Log saved to: ${saved_log}\e[0m" >&2
     fi
@@ -121,8 +126,9 @@ ensure_dialog() {
 # ============================================
 system_update() {
     log_info "Updating system..."
-    sudo pacman -Sy --noconfirm archlinux-keyring
-    sudo pacman -Syu --noconfirm
+    # Full upgrade including the keyring; avoids leaving the system in a
+    # partial-upgrade state (the old -Sy + -Syu sequence could do that).
+    sudo pacman -Syu --noconfirm --needed archlinux-keyring
     sudo pacman -S --noconfirm --needed base-devel wget git curl
 }
 
@@ -151,7 +157,7 @@ PACMAN_PKGS=(
 
     # ── Audio (PipeWire) ──
     pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber
-    alsa-utils
+    alsa-utils pulsemixer
 
     # ── Bluetooth ──
     bluez bluez-utils
@@ -160,10 +166,12 @@ PACMAN_PKGS=(
     xorg xorg-xinit xclip
 
     # ── Terminal & Shell ──
-    alacritty zsh
+    alacritty zsh starship zoxide
+    zsh-autosuggestions zsh-syntax-highlighting zsh-completions
+    zsh-history-substring-search
 
     # ── Window Manager ──
-    i3-wm i3lock i3status
+    i3-wm
 
     # ── Compositor ──
     picom
@@ -172,7 +180,7 @@ PACMAN_PKGS=(
     rofi polybar
 
     # ── File Manager ──
-    nemo
+    nemo yazi
 
     # ── Browser ──
     firefox
@@ -180,23 +188,22 @@ PACMAN_PKGS=(
     # ── Notifications ──
     dunst libnotify
 
-    # ── Wallpaper & Image ──
-    feh maim
-
-    # ── Screenshot ──
-    flameshot
+    # ── Wallpaper, Screenshot & Recording ──
+    feh maim slop ffmpeg flameshot xdotool
 
     # ── System Monitor ──
-    btop
+    btop cava
 
     # ── Network ──
     networkmanager network-manager-applet openvpn networkmanager-openvpn
+    networkmanager-dmenu wmctrl
 
     # ── Fonts ──
-    ttf-jetbrains-mono-nerd ttf-font-awesome noto-fonts noto-fonts-cjk noto-fonts-emoji
+    ttf-jetbrains-mono-nerd ttf-iosevka-nerd ttf-nerd-fonts-symbols-mono
+    noto-fonts noto-fonts-cjk noto-fonts-emoji papirus-icon-theme
 
     # ── Utilities ──
-    bc jq ripgrep fd fzf bat eza tree
+    bc jq ripgrep fd fzf bat eza tree pacman-contrib xdg-utils reflector
 
     # ── Power & Hardware ──
     upower acpi brightnessctl gammastep
@@ -204,20 +211,29 @@ PACMAN_PKGS=(
     # ── Screen Lock ──
     xss-lock
 
-    # ── GTK Theme Manager ──
-    lxappearance
+    # ── GTK / Audio / Display GUI ──
+    lxappearance pavucontrol arandr
 
     # ── Firmware ──
     sof-firmware
 
-    # ── Time & Sync ──
-    ntp
-
     # ── Archive ──
-    unzip p7zip
+    unzip 7zip
 
     # ── Others ──
     ntfs-3g vnstat
+
+    # ── Editors & Documents ──
+    neovim zathura zathura-pdf-mupdf
+
+    # ── Media ──
+    playerctl
+
+    # ── i3 helpers ──
+    autotiling
+
+    # ── System Info ──
+    fastfetch
 )
 
 install_pkgs() {
@@ -226,51 +242,44 @@ install_pkgs() {
 }
 
 AUR_PKGS=(
+    # ── Zsh ──
+    zsh-you-should-use
+
     # ── i3 Ecosystem ──
-    i3-resurrect autotiling
+    i3-resurrect i3lock-color
 
     # ── Screenshot & Recording ──
     ffcast
 
-    # ── Audio Control ──
-    pulsemixer
-
     # ── Music ──
-    spotify playerctl
-
-    # ── Editor ──
-    neovim
-
-    # ── File Manager Enhancements ──
-    ranger
-
-    # ── PDF Reader ──
-    zathura zathura-pdf-mupdf
+    spotify
 
     # ── Dracula Theme & Icons ──
     dracula-gtk-theme dracula-icons-theme
 
-    # ── Cursor Theme ──
+    # ── Cursor & Icon Fonts ──
     bibata-cursor-theme-bin
-
-    # ── System Info ──
-    neofetch
 )
 
 install_aur_pkgs() {
-    log_info "Installing packages with yay..."
-    yay -S --noconfirm --needed "${AUR_PKGS[@]}"
+    if ! command -v yay &>/dev/null; then
+        log_error "yay is not installed. Select 'Install yay (AUR helper)' first."
+        return 1
+    fi
 
-    log_info "Installing i3lock-color..."
-    local i3lock_dir="${TEMP_DIR}/i3lock-color"
-    git clone --depth 1 "https://github.com/Raymo111/i3lock-color.git" "${i3lock_dir}"
-    (cd "${i3lock_dir}" && ./install-i3lock-color.sh)
+    log_info "Installing packages with yay..."
+
+    # i3lock-color provides/conflicts with i3lock; remove the old package
+    # first so a previous installation does not block the upgrade.
+    sudo pacman -Rns --noconfirm i3lock 2>/dev/null || true
+
+    yay -S --noconfirm --needed "${AUR_PKGS[@]}"
 }
 
 # ============================================
 # Backup
 # ============================================
-CONFIG_DIRS=(alacritty btop dunst gtk-3.0 gtk-4.0 i3 neofetch nvim picom polybar ranger rofi zathura)
+CONFIG_DIRS=(alacritty btop cava dunst fastfetch fcitx5 gammastep gtk-3.0 gtk-4.0 i3 nvim picom polybar rofi zathura)
 
 create_backup() {
     log_info "Creating backup of existing configs..."
@@ -286,10 +295,19 @@ create_backup() {
     done
 
     if [[ -d "${SCRIPTS_DIR}" ]]; then
-        local scripts_backup="${TEMP_DIR}/scripts_backup_${DATE}"
+        local scripts_backup="${backup_dir}/usr-local-bin"
         sudo cp -a "${SCRIPTS_DIR}" "${scripts_backup}"
+        sudo chown -R "$(id -u):$(id -g)" "${scripts_backup}" 2>/dev/null || true
         log_info "Scripts directory backed up to ${scripts_backup}"
     fi
+
+    # Dotfiles that live outside ~/.config
+    for file in .zshrc .xprofile; do
+        if [[ -f "${HOME}/${file}" ]]; then
+            cp -a "${HOME}/${file}" "${backup_dir}/"
+            log_info "${file} backed up."
+        fi
+    done
 
     log_info "All backups saved to: ${backup_dir}"
 }
@@ -346,6 +364,11 @@ copy_files() {
 # GTK Theme (Dracula)
 # ============================================
 install_gtk_theme() {
+    if ! command -v yay &>/dev/null; then
+        log_error "yay is not installed. Select 'Install yay (AUR helper)' first."
+        return 1
+    fi
+
     log_info "Installing Dracula GTK theme and icons..."
     yay -S --noconfirm --needed dracula-gtk-theme dracula-icons-theme bibata-cursor-theme-bin
 
@@ -359,7 +382,8 @@ install_gtk_theme() {
             cp "/usr/share/themes/Dracula/gtk-4.0/gtk-dark.css" "${CONFIG_DIR}/gtk-4.0/"
         fi
         if [[ -d "/usr/share/themes/Dracula/assets" ]]; then
-            cp -r "/usr/share/themes/Dracula/assets" "${CONFIG_DIR}/"
+            mkdir -p "${CONFIG_DIR}/gtk-4.0"
+            cp -r "/usr/share/themes/Dracula/assets" "${CONFIG_DIR}/gtk-4.0/"
         fi
         log_info "GTK-4.0 Dracula assets copied to ~/.config"
     fi
@@ -391,29 +415,37 @@ git_clone_if_not_exists() {
 }
 
 # ============================================
-# Zsh & Oh-My-Zsh
+# Zsh (plain) + Starship
 # ============================================
 install_zsh() {
-    log_info "Installing zsh and oh-my-zsh..."
-    yay -S --noconfirm --needed zsh
+    log_info "Installing zsh, starship and plugins (pacman + AUR)..."
+    sudo pacman -S --noconfirm --needed zsh starship zoxide \
+        zsh-autosuggestions zsh-syntax-highlighting zsh-completions \
+        zsh-history-substring-search
 
-    if [[ ! -d "${HOME}/.oh-my-zsh" ]]; then
-        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    # zsh-you-should-use is AUR-only
+    if command -v yay &>/dev/null; then
+        yay -S --noconfirm --needed zsh-you-should-use
     else
-        log_warn "oh-my-zsh already installed, skipping."
+        log_warn "yay not found — skipping zsh-you-should-use. Choose 'Install yay (AUR helper)' and run again."
     fi
 
-    local custom_dir="${ZSH_CUSTOM:-${HOME}/.oh-my-zsh/custom}"
-    git_clone_if_not_exists "https://github.com/zsh-users/zsh-autosuggestions" "${custom_dir}/plugins/zsh-autosuggestions"
-    git_clone_if_not_exists "https://github.com/zsh-users/zsh-syntax-highlighting.git" "${custom_dir}/plugins/zsh-syntax-highlighting"
-    git_clone_if_not_exists "https://github.com/MichaelAquilina/zsh-you-should-use.git" "${custom_dir}/plugins/you-should-use"
-    git_clone_if_not_exists "https://github.com/fdellwing/zsh-bat.git" "${custom_dir}/plugins/zsh-bat"
+    # zsh-autopair is AUR-only -git, so keep git clone (lighter than yay build)
+    local data_plugins="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
+    mkdir -p "${data_plugins}"
+    git_clone_if_not_exists "https://github.com/hlissner/zsh-autopair.git" \
+        "${data_plugins}/zsh-autopair"
 
     log_info "Setting Zsh as default shell..."
     local zsh_path
     zsh_path="$(command -v zsh)"
     if [[ "${SHELL}" != "${zsh_path}" ]]; then
         chsh -s "${zsh_path}"
+    fi
+
+    # Remaining: old oh-my-zsh can be removed (not auto-removed)
+    if [[ -d "${HOME}/.oh-my-zsh" ]]; then
+        log_warn "~/.oh-my-zsh still exists (no longer used in .zshrc). Remove it: rm -rf ~/.oh-my-zsh"
     fi
 }
 
@@ -422,7 +454,7 @@ install_zsh() {
 # ============================================
 install_fcitx5_bamboo() {
     log_info "Installing fcitx5 and fcitx5-bamboo..."
-    yay -S --noconfirm --needed fcitx5 fcitx5-bamboo fcitx5-gtk fcitx5-qt
+    sudo pacman -S --noconfirm --needed fcitx5 fcitx5-bamboo fcitx5-gtk fcitx5-qt
 
     log_info "Deploying Fcitx5 configuration files..."
     mkdir -p "${HOME}/.config/fcitx5"
@@ -437,7 +469,7 @@ install_sddm() {
     log_info "Installing SDDM theme..."
     # qt6-multimedia: Main.qml imports QtMultimedia (greeter crashes without it)
     # qt6-svg:        the icons in Assets/   |   qt6-5compat: NOT needed
-    yay -S --noconfirm --needed sddm qt6-declarative qt6-svg qt6-multimedia qt6-virtualkeyboard
+    sudo pacman -S --noconfirm --needed sddm qt6-declarative qt6-svg qt6-multimedia qt6-virtualkeyboard
 
     if command -v systemctl &>/dev/null; then
         sudo systemctl enable sddm.service --now 2>/dev/null ||
@@ -482,7 +514,7 @@ enable_services() {
     if command -v systemctl &>/dev/null; then
         sudo systemctl enable --now bluetooth.service 2>/dev/null || sudo systemctl enable bluetooth.service
         sudo systemctl enable --now NetworkManager.service 2>/dev/null || sudo systemctl enable NetworkManager.service
-        sudo systemctl enable --now ntpd.service 2>/dev/null || sudo systemctl enable ntpd.service
+        sudo systemctl enable --now systemd-timesyncd.service 2>/dev/null || sudo systemctl enable systemd-timesyncd.service
         log_info "Core services enabled."
     fi
 
@@ -572,7 +604,7 @@ main() {
         esac
     done
 
-    # Copy log ra ngoài trước khi cleanup
+    # Copy log out before cleanup
     local saved_log
     saved_log=$(save_log)
 

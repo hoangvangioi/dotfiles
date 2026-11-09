@@ -11,7 +11,7 @@ Personal Arch Linux dotfiles featuring i3-wm, Polybar, Rofi, Neovim, and the Dra
 | **Window Manager** | [i3-wm](https://i3wm.org) | `i3-wm` |
 | **Compositor** | [picom](https://github.com/yshui/picom) | `picom` |
 | **Terminal Emulator** | [Alacritty](https://github.com/alacritty/alacritty) | `alacritty` |
-| **Shell** | [Zsh](https://www.zsh.org) + [Oh My Zsh](https://ohmyz.sh) | `zsh` |
+| **Shell** | [Zsh](https://www.zsh.org) + [Starship](https://starship.rs) | `zsh`, `starship` |
 | **Status Bar** | [Polybar](https://github.com/polybar/polybar) | `polybar` |
 | **Application Launcher** | [Rofi](https://github.com/davatorium/rofi) | `rofi` |
 | **Notification Daemon** | [Dunst](https://github.com/dunst-project/dunst) | `dunst` |
