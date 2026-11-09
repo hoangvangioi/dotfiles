@@ -10,7 +10,8 @@ declare -A ICONS
 SITE_TO_USE=""
 
 CACHE_DIR="$HOME/.cache/rofi/web-search"
-BROWSER="microsoft-edge-stable"
+# Use $BROWSER from the environment by default (set via xprofile to firefox), falling back to firefox.
+BROWSER="${BROWSER:-firefox}"
 
 SITES=(
     ["google"]="https://www.google.com/search?q="
@@ -47,7 +48,7 @@ usage() {
         echo "              * $site"
     done
 
-    echo "  -b      give the browser to use, the default value is 'google-chrome-stable'"
+    echo "  -b      give the browser to use, the default value is '$BROWSER'"
 
     exit 1
 }
