@@ -64,7 +64,11 @@ audio_microphone() {
 
 # Record audio from desktop
 audio_desktop() {
-    desktop_source=$(pacmd list-sources | grep -E '^\s+name: .*alsa_output' | cut -c 8- | sed 's/[<,>]//g')
+    desktop_source=$(pactl list short sources | awk '$2 ~ /\.monitor$/ {print $2; exit}')
+    if [ -z "$desktop_source" ]; then
+        notify "Error" "No monitor source found"
+        return 1
+    fi
     ffmpeg -f pulse -i "$desktop_source" -c:a flac "$AUDIO_DIR/audio-desktop-$DATE.flac" &
     echo $! >"$PID_FILE"
     notify "Recording Started" "Desktop audio recording started."
